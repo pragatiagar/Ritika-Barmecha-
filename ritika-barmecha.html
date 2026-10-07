@@ -104,6 +104,19 @@ const ATTENDEE_OPTIONS = {
   'The Space At 9/2': ['Pragati Todi','Anahita Kayan','Anwesha Mukherjee','Shristi Sharma','Disha Bhattacharya'],
 };
 
+/* ── STUDIO ROSTER (team dropdown — picking a name pre-fills the role) ── */
+const STUDIO_ROSTER = [
+  { name:'Anahita Kayan',         role:'Founder & Creative Director' },
+  { name:'Pragati Todi',          role:'Director of Operations' },
+  { name:'Anushka Subramaniam',   role:'Senior Strategist' },
+  { name:'Mugdha Palit',          role:'Senior Designer' },
+  { name:'Shristi Sharma',        role:'Senior Designer' },
+  { name:'Meghna Bhadra',         role:'Mid-Level Designer' },
+  { name:'Sakhi Samant',          role:'Mid-Level Designer' },
+  { name:'Shruti Kataria',        role:'Junior Designer' },
+  { name:'Disha Bhattacharya',    role:'Junior Designer' },
+];
+
 function cColor(s) {
   const m = {
     'Not Started':'#ABA49C','In Progress':'#4E7A5A','In Review':'#7B6FAB',
@@ -554,7 +567,30 @@ function EditModal({ modal, onClose, onSave, onDelete, phases, deliverables, mee
 
       case 'team': return (
         <>
-          <FormField label="Name"><input className="form-input" style={inputStyle} value={draft.name||''} onChange={e=>up('name',e.target.value)} placeholder="Full name" /></FormField>
+          {(() => {
+            const taken = new Set((team||[]).filter(t => t.id !== draft.id).map(t => t.name));
+            const options = STUDIO_ROSTER.filter(r => !taken.has(r.name));
+            const inRoster = STUDIO_ROSTER.some(r => r.name === draft.name);
+            const custom = draft._custom || (draft.name && !inRoster);
+            return (
+              <>
+                <FormField label="Team Member">
+                  <select className="form-select" style={inputStyle} value={custom ? '__other' : (draft.name||'')}
+                    onChange={e => {
+                      const v = e.target.value;
+                      if (v === '__other') { setDraft(p => ({ ...p, name:'', _custom:true })); return; }
+                      const r = STUDIO_ROSTER.find(x => x.name === v);
+                      setDraft(p => ({ ...p, name:v, role: r ? r.role : p.role, _custom:false }));
+                    }}>
+                    <option value="" disabled>Select from studio team…</option>
+                    {options.map(r => <option key={r.name} value={r.name}>{r.name} — {r.role}</option>)}
+                    <option value="__other">Someone else (type name)…</option>
+                  </select>
+                </FormField>
+                {custom && <FormField label="Name"><input className="form-input" style={inputStyle} value={draft.name||''} onChange={e=>up('name',e.target.value)} placeholder="Full name" /></FormField>}
+              </>
+            );
+          })()}
           <FormField label="Role"><input className="form-input" style={inputStyle} value={draft.role||''} onChange={e=>up('role',e.target.value)} placeholder="e.g. Lead Designer" /></FormField>
           <FormField label="Responsibility">
             <textarea className="form-textarea" style={{ ...inputStyle, minHeight:60 }} value={draft.responsibility||''} onChange={e=>up('responsibility',e.target.value)} placeholder="Brief description of their role in the project" />
@@ -1221,7 +1257,7 @@ function App() {
     const { type, isNew } = editModal;
     const withId = isNew ? { ...draft, id: type + uid() } : draft;
     if (type === 'phase')       { isNew ? setPhases(p=>[...p,withId])       : setPhases(p=>p.map(x=>x.id===draft.id?draft:x)); }
-    else if (type === 'team')   { isNew ? setTeam(p=>[...p,withId])         : setTeam(p=>p.map(x=>x.id===draft.id?draft:x)); }
+    else if (type === 'team')   { const { _custom, ...m } = withId; isNew ? setTeam(p=>[...p,m]) : setTeam(p=>p.map(x=>x.id===m.id?m:x)); }
     else if (type === 'meeting'){
       isNew ? setMeetings(p=>[...p,withId]) : setMeetings(p=>p.map(x=>x.id===draft.id?draft:x));
       // Sync linked milestone (m1↔ms1, m2↔ms2, ...) — write date+status back to presentations state
