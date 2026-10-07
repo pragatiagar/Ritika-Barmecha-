@@ -1421,8 +1421,8 @@ function App() {
   const navLinks = [
     { id:'overview', label:'Overview' },
     { id:'timeline', label:'Timeline' },
-    { id:'team', label:'Team' },
     { id:'calendar', label:'Calendar' },
+    { id:'team', label:'Team' },
     { id:'meetings', label:'Meetings' },
     { id:'deliverables', label:'Deliverables' },
     { id:'files', label:'Files' },
@@ -1711,31 +1711,6 @@ function App() {
         </section>
 
         {/* ════════════════════════════════
-            TEAM (id="team")
-        ════════════════════════════════ */}
-        <section id="team" style={{ paddingTop:48, paddingBottom:48, borderBottom:`1px solid ${T.borderHair}` }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:28 }}>
-            <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:T.text3 }}>Project Team</div>
-            {editMode && <button className="add-btn" style={{ border:`1px dashed ${T.accent}70`, color:T.accent, padding:'5px 12px', marginTop:0 }} onClick={() => openAdd('team', { name:'', role:'', responsibility:'' })}>+ Add Member</button>}
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'0 40px' }}>
-            {team.map((member, i) => (
-              <div key={member.id} className="edit-row" style={{ padding:'20px 0', position:'relative' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
-                  <div style={{ width:32, height:32, borderRadius:'50%', background:T.accentBg, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <span style={{ fontFamily:T.serif, fontSize:13, fontWeight:500, color:T.accent }}>{member.name.charAt(0)}</span>
-                  </div>
-                  {editMode && <EditBadge onClick={() => openEdit('team', member)} />}
-                </div>
-                <div style={{ fontFamily:T.sans, fontSize:13, fontWeight:600, color:T.text1, marginBottom:3 }}>{member.name}</div>
-                <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, color:T.accent, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:8 }}>{member.role}</div>
-                {member.responsibility && <div style={{ fontFamily:T.sans, fontSize:11, color:T.text2, lineHeight:1.6 }}>{member.responsibility}</div>}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ════════════════════════════════
             CALENDAR (id="calendar")
         ════════════════════════════════ */}
         <section id="calendar" style={{ paddingTop:48, paddingBottom:48, borderBottom:`1px solid ${T.borderHair}` }}>
@@ -1937,6 +1912,31 @@ function App() {
               </div>
             );
           })()}
+        </section>
+
+        {/* ════════════════════════════════
+            TEAM (id="team")
+        ════════════════════════════════ */}
+        <section id="team" style={{ paddingTop:48, paddingBottom:48, borderBottom:`1px solid ${T.borderHair}` }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:28 }}>
+            <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:T.text3 }}>Project Team</div>
+            {editMode && <button className="add-btn" style={{ border:`1px dashed ${T.accent}70`, color:T.accent, padding:'5px 12px', marginTop:0 }} onClick={() => openAdd('team', { name:'', role:'', responsibility:'' })}>+ Add Member</button>}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'0 40px' }}>
+            {team.map((member, i) => (
+              <div key={member.id} className="edit-row" style={{ padding:'20px 0', position:'relative' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+                  <div style={{ width:32, height:32, borderRadius:'50%', background:T.accentBg, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <span style={{ fontFamily:T.serif, fontSize:13, fontWeight:500, color:T.accent }}>{member.name.charAt(0)}</span>
+                  </div>
+                  {editMode && <EditBadge onClick={() => openEdit('team', member)} />}
+                </div>
+                <div style={{ fontFamily:T.sans, fontSize:13, fontWeight:600, color:T.text1, marginBottom:3 }}>{member.name}</div>
+                <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, color:T.accent, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:8 }}>{member.role}</div>
+                {member.responsibility && <div style={{ fontFamily:T.sans, fontSize:11, color:T.text2, lineHeight:1.6 }}>{member.responsibility}</div>}
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* ════════════════════════════════
