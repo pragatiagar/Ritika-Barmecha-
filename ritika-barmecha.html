@@ -365,6 +365,11 @@ const INITIAL_DEPS = [
   { id:'dep8', title:'Social Media Grid Feedback',             description:'Feedback on the Social Media Grid Presentation, needed before final handover.', status:'Pending', due:'2027-01-09', priority:'Medium' },
 ];
 
+const BAND_COLORS = ['#3D6B50','#4A4540','#7B6FAB','#5B7A99','#C9A040','#B24B43','#4E8A88','#8A6A3A'];
+
+/* Extra calendar bands (phases are drawn automatically) */
+const INITIAL_CAL_BANDS = [];
+
 const INITIAL_LINKS = [
   {
     id:'lnk_team', label:'By — Ritika Barmecha',
@@ -505,7 +510,7 @@ function EditModal({ modal, onClose, onSave, onDelete, phases, deliverables, mee
   const up = (k, v) => setDraft(p => ({ ...p, [k]: v }));
 
   const inputStyle = { background:T.surface, border:`1px solid ${T.border}`, color:T.text1 };
-  const typeLabels = { phase:'Phase', team:'Team Member', meeting:'Meeting', deliverable:'Deliverable', dep:'Input Required', activity:'Update', link:'Link' };
+  const typeLabels = { phase:'Phase', team:'Team Member', meeting:'Meeting', deliverable:'Deliverable', dep:'Input Required', activity:'Update', link:'Link', calband:'Calendar Band' };
   const label = typeLabels[modal.type] || modal.type;
 
   /* ── Linked-date shift (phase end date changed) ── */
@@ -795,6 +800,30 @@ function EditModal({ modal, onClose, onSave, onDelete, phases, deliverables, mee
         </>
       );
 
+      case 'calband': return (
+        <>
+          <FormField label="Label">
+            <input className="form-input" style={inputStyle} value={draft.label||''} onChange={e=>up('label',e.target.value)} placeholder="e.g. Studio closed, Client travelling..." />
+          </FormField>
+          <FormRow>
+            <FormField label="Start Date" half>
+              <input type="date" className="form-input" style={inputStyle} value={draft.start||''} onChange={e=>up('start',e.target.value)} />
+            </FormField>
+            <FormField label="End Date" half>
+              <input type="date" className="form-input" style={inputStyle} value={draft.end||''} onChange={e=>up('end',e.target.value)} />
+            </FormField>
+          </FormRow>
+          <FormField label="Colour">
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:8 }}>
+              {BAND_COLORS.map(c => (
+                <button key={c} onClick={()=>up('color',c)} style={{ width:26, height:26, borderRadius:'50%', background:c, border: draft.color===c ? `3px solid ${T.text1}` : `2px solid transparent`, cursor:'pointer', outline:'none', transition:'border 0.12s' }} />
+              ))}
+            </div>
+            <input className="form-input" style={{ ...inputStyle, fontFamily:'monospace', fontSize:11 }} value={draft.color||''} onChange={e=>up('color',e.target.value)} placeholder="#4A4540" />
+          </FormField>
+        </>
+      );
+
       default: return null;
     }
   }
@@ -1030,6 +1059,13 @@ function App() {
   const [deliverables,  setDeliverables]  = useState(INITIAL_DELIVERABLES);
   const [deps,          setDeps]          = useState(INITIAL_DEPS);
   const [links,         setLinks]         = useState(INITIAL_LINKS);
+  const [calBands,      setCalBands]      = useState(INITIAL_CAL_BANDS);
+  const [calMonth,      setCalMonth]      = useState(() => {
+    const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
+    const s = pd(INITIAL_PROJECT.startDate), e = pd(INITIAL_PROJECT.endDate);
+    const c = d < s ? s : d > e ? e : d;
+    return new Date(c.getFullYear(), c.getMonth(), 1);
+  });
 
   const [editMode,      setEditMode]      = useState(false);
   const [editModal,     setEditModal]     = useState(null);
@@ -1088,6 +1124,7 @@ function App() {
           r('rb_deliverables',  setDeliverables,  migrateDeliverables);
           r('rb_deps',          setDeps,  migrateDeps);
           r('rb_links',         setLinks);
+          r('rb_cal_bands',     setCalBands);
         }
       } catch {}
       canSave.current = true;
@@ -1112,6 +1149,7 @@ function App() {
           if (record.deliverables?.length)  setDeliverables(migrateDeliverables(record.deliverables));
           if (record.deps?.length)          setDeps(migrateDeps(record.deps));
           if (record.links?.length)         setLinks(record.links);
+          if (Array.isArray(record.calBands)) setCalBands(record.calBands);
         }
       } catch (err) {
         console.warn('Ritika Barmecha portal: JSONbin load failed; falling back to defaults', err);
@@ -1135,6 +1173,7 @@ function App() {
       localStorage.setItem('rb_deliverables',  JSON.stringify(deliverables));
       localStorage.setItem('rb_deps',          JSON.stringify(deps));
       localStorage.setItem('rb_links',         JSON.stringify(links));
+      localStorage.setItem('rb_cal_bands',     JSON.stringify(calBands));
     } catch {}
     if (!JSONBIN_OK) return;
     // Debounced PUT to avoid spamming JSONbin during rapid edits
@@ -1145,12 +1184,12 @@ function App() {
         body:    JSON.stringify({
           version: DATA_VERSION,
           project, phases, team, presentations,
-          meetings, deliverables, deps, links,
+          meetings, deliverables, deps, links, calBands,
         }),
       }).catch(err => console.warn('Ritika Barmecha portal: JSONbin save failed', err));
     }, 600);
     return () => clearTimeout(tid);
-  }, [project, phases, team, presentations, meetings, deliverables, deps, links]);
+  }, [project, phases, team, presentations, meetings, deliverables, deps, links, calBands]);
 
   /* ── DERIVED PHASE STATUS + DISPLAY DATE ───────────────────────────────
      Three signals combined; highest level wins (phases never downgraded).
@@ -1271,6 +1310,7 @@ function App() {
     }
     else if (type === 'deliverable'){ isNew ? setDeliverables(p=>[...p,withId]) : setDeliverables(p=>p.map(x=>x.id===draft.id?draft:x)); }
     else if (type === 'dep')    { isNew ? setDeps(p=>[...p,withId])         : setDeps(p=>p.map(x=>x.id===draft.id?draft:x)); }
+    else if (type === 'calband'){ isNew ? setCalBands(p=>[...p,withId])     : setCalBands(p=>p.map(x=>x.id===draft.id?draft:x)); }
     else if (type === 'link')   {
       if (isNew) { setLinks(p=>p.map(folder=>folder.id===draft._folderId ? { ...folder, subFolders:[...folder.subFolders, withId] } : folder)); }
       else { setLinks(p=>p.map(folder=>({ ...folder, subFolders: folder.subFolders.map(sf=>sf.id===draft.id?{...draft}:sf) }))); }
@@ -1285,6 +1325,7 @@ function App() {
     else if (type === 'meeting')setMeetings(p=>p.filter(x=>x.id!==draft.id));
     else if (type === 'deliverable') setDeliverables(p=>p.filter(x=>x.id!==draft.id));
     else if (type === 'dep')    setDeps(p=>p.filter(x=>x.id!==draft.id));
+    else if (type === 'calband')setCalBands(p=>p.filter(x=>x.id!==draft.id));
     else if (type === 'link')   setLinks(p=>p.map(folder=>({ ...folder, subFolders: folder.subFolders.filter(sf=>sf.id!==draft.id) })));
     setEditModal(null);
   }
@@ -1381,6 +1422,7 @@ function App() {
     { id:'overview', label:'Overview' },
     { id:'timeline', label:'Timeline' },
     { id:'team', label:'Team' },
+    { id:'calendar', label:'Calendar' },
     { id:'meetings', label:'Meetings' },
     { id:'deliverables', label:'Deliverables' },
     { id:'files', label:'Files' },
@@ -1691,6 +1733,210 @@ function App() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* ════════════════════════════════
+            CALENDAR (id="calendar")
+        ════════════════════════════════ */}
+        <section id="calendar" style={{ paddingTop:48, paddingBottom:48, borderBottom:`1px solid ${T.borderHair}` }}>
+          {(() => {
+            const today      = new Date(); today.setHours(0,0,0,0);
+            const year       = calMonth.getFullYear();
+            const month      = calMonth.getMonth();
+            const daysInMonth= new Date(year, month+1, 0).getDate();
+            const firstDow   = new Date(year, month, 1).getDay();
+            const cells      = [...Array(firstDow).fill(null), ...Array.from({length:daysInMonth},(_,i)=>i+1)];
+            while (cells.length % 7 !== 0) cells.push(null);
+            const weeks = [];
+            for (let i=0; i<cells.length; i+=7) weeks.push(cells.slice(i,i+7));
+            const fmt2   = n => String(n).padStart(2,'0');
+            const toDate = d => d ? `${year}-${fmt2(month+1)}-${fmt2(d)}` : null;
+            const prevMonth = new Date(year, month-1, 1);
+            const nextMonth = new Date(year, month+1, 1);
+            const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            const DEP_COLOR = '#C4894A';
+
+            const byDay = (list, key) => { const o = {}; list.forEach(x => { if (x[key]) (o[x[key]] = o[x[key]]||[]).push(x); }); return o; };
+            const mtgByDay  = byDay(meetings, 'date');
+            const delByDay  = byDay(deliverables, 'due');
+            const depByDay  = byDay(deps, 'due');
+            // Milestones with no meeting on the same day (e.g. documents to be emailed)
+            const msByDay   = byDay(effectivePresentations.filter(p => !mtgByDay[p.date]), 'date');
+
+            const bands = [
+              ...effectivePhases.filter(p => p.start && p.end).map(p => ({ id:'ph_'+p.id, phaseId:p.id, label:p.clientName || p.name, start:p.start, end:p.end, color:p.color || T.accent })),
+              ...calBands.filter(b => b.start && b.end && b.label),
+            ];
+            const editBand = b => {
+              if (!editMode) return;
+              if (b.phaseId) { const ph = phases.find(x => x.id === b.phaseId); if (ph) openEdit('phase', ph); }
+              else openEdit('calband', b);
+            };
+            const done = s => ['Delivered','Approved','Finalised','Completed','Done'].includes(s);
+            const chip = (key, label, { filled, color, isDone, onClick, title }) => (
+              <div key={key} onClick={onClick} title={title || label} style={{
+                background: isDone ? T.bgAlt : filled ? color : color + '14',
+                color:      isDone ? T.text3 : filled ? '#fff' : color,
+                border:     isDone ? `1px solid ${T.border}` : filled ? 'none' : `1px solid ${color}55`,
+                opacity:    isDone ? 0.6 : 1,
+                textDecoration: isDone ? 'line-through' : 'none',
+                borderRadius:3, padding:'3px 6px', marginBottom:3,
+                fontFamily:T.sans, fontSize:8, fontWeight:600, lineHeight:1.3,
+                cursor: onClick ? 'pointer' : 'default',
+              }}><span style={{ overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', wordBreak:'break-word' }}>{label}</span></div>
+            );
+            const LegendDot = ({ color, label, filled }) => (
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <div style={{ width:10, height:10, borderRadius:2, background: filled ? color : color+'22', border: filled ? 'none' : `1px solid ${color}88` }} />
+                <span style={{ fontFamily:T.sans, fontSize:9, color:T.text2 }}>{label}</span>
+              </div>
+            );
+
+            return (
+              <div>
+                <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:T.text3, marginBottom:20 }}>Calendar</div>
+                {/* Nav row */}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:20 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                    <button onClick={() => setCalMonth(prevMonth)}
+                      style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:6, width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:T.text1, fontSize:15 }}>‹</button>
+                    <span style={{ fontFamily:T.serif, fontSize:24, fontWeight:500, color:T.text1, minWidth:200 }}>
+                      {calMonth.toLocaleString('en',{month:'long', year:'numeric'})}
+                    </span>
+                    <button onClick={() => setCalMonth(nextMonth)}
+                      style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:6, width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:T.text1, fontSize:15 }}>›</button>
+                  </div>
+                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                    <button onClick={() => setCalMonth(new Date(today.getFullYear(), today.getMonth(), 1))}
+                      style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:20, padding:'5px 14px', fontFamily:T.sans, fontSize:8, fontWeight:600, color:T.text2, cursor:'pointer', letterSpacing:'0.06em' }}>
+                      Today
+                    </button>
+                    {editMode && (
+                      <button className="add-btn" onClick={() => openAdd('calband', { label:'', start:'', end:'', color:BAND_COLORS[0] })}
+                        style={{ border:`1px dashed ${T.accent}70`, color:T.accent, padding:'5px 12px' }}>
+                        + Add Band
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div style={{ display:'flex', flexWrap:'wrap', gap:14, marginBottom:18 }}>
+                  <LegendDot color={T.accent} label="Meeting / Presentation" filled />
+                  <LegendDot color={T.accent} label="Milestone" />
+                  <LegendDot color={T.text2}  label="Deliverable due" />
+                  <LegendDot color={DEP_COLOR} label="Client input due" />
+                  {bands.map(b => (
+                    <div key={b.id} style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <div style={{ width:10, height:10, borderRadius:'50%', background:b.color }} />
+                      <span style={{ fontFamily:T.sans, fontSize:9, color:T.text2 }}>{b.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Grid */}
+                <div style={{ border:`1px solid ${T.border}`, borderRadius:6, overflow:'hidden' }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(7,minmax(0,1fr))', background:T.bgAlt, borderBottom:`1px solid ${T.border}` }}>
+                    {DOW.map(d => (
+                      <div key={d} style={{ padding:'9px 10px', fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:T.text3 }}>{d}</div>
+                    ))}
+                  </div>
+
+                  {weeks.map((week, wi) => {
+                    const weekStart = toDate(week.find(d=>d));
+                    const weekEnd   = toDate([...week].reverse().find(d=>d));
+                    const activeBands = bands.filter(b => weekStart && weekEnd && b.start <= weekEnd && b.end >= weekStart);
+                    return (
+                      <div key={wi} style={{ borderBottom: wi < weeks.length-1 ? `1px solid ${T.border}` : 'none' }}>
+                        {/* Band rows — non-overlapping bands share a lane */}
+                        {(() => {
+                          const lanes = [];
+                          activeBands.map(b => {
+                            let startCol = 7, endCol = -1;
+                            week.forEach((day, di) => {
+                              const ds = toDate(day);
+                              if (ds && ds >= b.start && ds <= b.end) { startCol = Math.min(startCol, di); endCol = Math.max(endCol, di); }
+                            });
+                            return { b, startCol, endCol };
+                          }).filter(x => x.endCol >= 0).sort((x, y) => x.startCol - y.startCol).forEach(x => {
+                            const lane = lanes.find(l => l[l.length-1].endCol < x.startCol);
+                            lane ? lane.push(x) : lanes.push([x]);
+                          });
+                          return lanes.map((lane, li) => (
+                            <div key={li} style={{ position:'relative', height:26, borderBottom:`1px solid ${T.borderHair}`, background:T.surface }}>
+                              {lane.map(({ b, startCol, endCol }) => {
+                          const leftPct  = (startCol / 7 * 100).toFixed(2);
+                          const widthPct = ((endCol - startCol + 1) / 7 * 100).toFixed(2);
+                          const isFirstWeek = b.start >= weekStart;
+                          const isLastWeek  = b.end   <= weekEnd;
+                          return (
+                              <div key={b.id} onClick={() => editBand(b)} style={{
+                                position:'absolute', top:4, bottom:4, cursor: editMode ? 'pointer' : 'default',
+                                left:`calc(${leftPct}% + 4px)`, width:`calc(${widthPct}% - 8px)`,
+                                background: b.color + '22', border:`1.5px solid ${b.color}66`,
+                                borderRadius:`${isFirstWeek?5:0}px ${isLastWeek?5:0}px ${isLastWeek?5:0}px ${isFirstWeek?5:0}px`,
+                                display:'flex', alignItems:'center', gap:7, paddingLeft:8, paddingRight:8,
+                              }}>
+                                <div style={{ width:7, height:7, borderRadius:'50%', background:b.color, flexShrink:0 }} />
+                                <span style={{ fontFamily:T.sans, fontSize:9, fontWeight:600, color:b.color, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flex:1 }}>
+                                  {isFirstWeek || toDate(week[startCol]) === weekStart ? b.label : ''}
+                                </span>
+                                {editMode && <span style={{ fontFamily:T.sans, fontSize:7, color:b.color, opacity:0.6 }}>✏</span>}
+                              </div>
+                          );
+                              })}
+                            </div>
+                          ));
+                        })()}
+
+                        {/* Day cells */}
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(7,minmax(0,1fr))' }}>
+                          {week.map((day, di) => {
+                            const ds      = toDate(day);
+                            const dayMtgs = ds ? (mtgByDay[ds]||[]) : [];
+                            const dayMs   = ds ? (msByDay[ds]||[])  : [];
+                            const dayDels = ds ? (delByDay[ds]||[]) : [];
+                            const dayDeps = ds ? (depByDay[ds]||[]) : [];
+                            const isToday = day && today.getFullYear()===year && today.getMonth()===month && today.getDate()===day;
+                            return (
+                              <div key={di} style={{
+                                minHeight:96, padding:'8px 6px', minWidth:0,
+                                borderRight: di < 6 ? `1px solid ${T.border}` : 'none',
+                                background: isToday ? T.accentBg : !day ? T.bgAlt : T.surface,
+                                opacity: !day ? 0.5 : 1,
+                              }}>
+                                {day && (
+                                  <>
+                                    <div style={isToday ? {
+                                      width:22, height:22, borderRadius:'50%', background:T.accent,
+                                      display:'flex', alignItems:'center', justifyContent:'center',
+                                      fontFamily:T.sans, fontSize:10, fontWeight:700, color:'#fff', marginBottom:6,
+                                    } : {
+                                      fontFamily:T.sans, fontSize:11, fontWeight:500, color:T.text3, marginBottom:4, paddingLeft:2,
+                                    }}>{day}</div>
+                                    {dayMtgs.map(m => chip(m.id, m.title, { filled:true, color:T.accent, isDone:m.status==='Done', onClick:() => setActiveMeeting(m) }))}
+                                    {dayMs.map(p => chip(p.id, p.notes, { color:T.accent, isDone:p.status==='Done' || p.status==='Received' }))}
+                                    {dayDels.length === 1
+                                      ? chip(dayDels[0].id, '◆ ' + dayDels[0].name, { color:T.text2, isDone:done(dayDels[0].status), onClick: editMode ? () => openEdit('deliverable', dayDels[0]) : undefined })
+                                      : dayDels.length > 1 && chip('dels_'+ds, `◆ ${dayDels.length} deliverables due`, {
+                                          color:T.text2, isDone:dayDels.every(d => done(d.status)),
+                                          title: dayDels.map(d => `• ${d.name} — ${d.status}`).join('\n'),
+                                          onClick: () => document.getElementById('deliverables')?.scrollIntoView({ behavior:'smooth', block:'start' }),
+                                        })}
+                                    {dayDeps.map(d => chip(d.id, 'Client: ' + d.title, { color:DEP_COLOR, isDone:d.status==='Completed', onClick: editMode ? () => openEdit('dep', d) : undefined }))}
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {/* ════════════════════════════════
