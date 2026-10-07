@@ -1,0 +1,5 @@
+{
+  "version": 2,
+  "builds": [{ "src": "ritika-barmecha.html", "use": "@vercel/static" }],
+  "routes": [{ "src": "/", "dest": "/ritika-barmecha.html" }]
+}

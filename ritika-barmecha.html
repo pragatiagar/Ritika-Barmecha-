@@ -1,0 +1,2013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ritika Barmecha — Project Portal · The Space at 9/2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.27.6/babel.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', sans-serif; min-height: 100vh; -webkit-font-smoothing: antialiased; transition: background 0.35s, color 0.35s; }
+  ::-webkit-scrollbar { width: 2px; }
+  ::-webkit-scrollbar-thumb { background: #C9A96E50; border-radius: 2px; }
+  button, select, input, textarea { font-family: inherit; }
+  section { scroll-margin-top: 54px; }
+  .edit-btn { opacity:0; transition:opacity 0.15s; border:none; background:none; cursor:pointer; padding:3px 8px; border-radius:3px; font-size:8px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#C9A96E; }
+  .edit-row:hover .edit-btn { opacity:1; }
+  .form-input { width:100%; padding:9px 12px; border-radius:5px; font-size:12px; outline:none; transition:border-color 0.15s; }
+  .form-input:focus { border-color:#C9A96E; }
+  .form-textarea { width:100%; padding:9px 12px; border-radius:5px; font-size:12px; outline:none; resize:vertical; min-height:80px; line-height:1.6; transition:border-color 0.15s; }
+  .form-textarea:focus { border-color:#C9A96E; }
+  .form-select { width:100%; padding:9px 12px; border-radius:5px; font-size:12px; outline:none; appearance:none; cursor:pointer; }
+  .form-select:focus { border-color:#C9A96E; }
+  .add-btn { display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:4px; font-size:8px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; transition:all 0.15s; background:none; }
+  .phase-node { transition:all 0.2s; }
+  .accordion-row { transition:background 0.15s; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect, useMemo, createContext, useContext } = React;
+
+/* ═══════════════════════════════════════
+   BACKEND CONFIG  (JSONbin)
+═══════════════════════════════════════ */
+const JSONBIN_ID   = '6ac5e52eac6210605a1b5c41';
+const JSONBIN_KEY  = '$2a$10$wOPcpLA/TDcCVVNuKP/AOe6sOmwEy984EOZAalafQr4d2rZxgcmZC';
+const JSONBIN_OK   = !JSONBIN_ID.includes('YOUR_');
+const DATA_VERSION = 1;
+
+/* ═══════════════════════════════════════
+   ADMIN GATE
+═══════════════════════════════════════ */
+const EDIT_PASSCODE = 'ritika2026';
+
+/* ═══════════════════════════════════════
+   DUAL THEME SYSTEM
+═══════════════════════════════════════ */
+const LIGHT = {
+  bg:'#F7F5F0', bgAlt:'#EDEBE5', surface:'#FFFFFF',
+  border:'#E2DFD9', borderHair:'#EDEAE4',
+  text1:'#1A1917', text2:'#5E5A56', text3:'#9E9890',
+  accent:'#C9A96E', accentBg:'#F7F0DE',
+  onTrack:'#4E7A5A', onTrackBg:'#EBF3EC',
+  atRisk:'#C4894A', atRiskBg:'#FAF0E6',
+  complete:'#4E8A88', completeBg:'#EAF3F3',
+  serif:"'Playfair Display', Georgia, serif",
+  sans:"'Inter', -apple-system, sans-serif",
+};
+const DARK = {
+  bg:'#141312', bgAlt:'#1C1B19', surface:'#1F1E1C',
+  border:'#2E2B28', borderHair:'#252320',
+  text1:'#EDE9E2', text2:'#A09A93', text3:'#5E5A56',
+  accent:'#C9A96E', accentBg:'#26211A',
+  onTrack:'#5E8A6A', onTrackBg:'#182419',
+  atRisk:'#C4894A', atRiskBg:'#261E14',
+  complete:'#5A8A88', completeBg:'#162222',
+  serif:"'Playfair Display', Georgia, serif",
+  sans:"'Inter', -apple-system, sans-serif",
+};
+
+const ThemeCtx = createContext(LIGHT);
+
+/* ═══════════════════════════════════════
+   STATUS HELPERS
+═══════════════════════════════════════ */
+const COMPLETE_STATUSES = new Set(['Handover Complete','Complete']);
+const ACTIVE_STATUSES   = new Set(['Kick-off','Research','In Progress','Design – In Progress','Presentation scheduled','Awaiting Feedback','Refining basis feedback','In Development','Creating Print ready files','Awaiting Content','Submitted - Handover remaining']);
+
+const INTERNAL_TO_CLIENT = {
+  'Yet to begin':'Not Started','Kick-off':'In Progress','Research':'In Progress',
+  'In Progress':'In Progress','Design – In Progress':'In Progress',
+  'Presentation scheduled':'In Review','Awaiting Feedback':'Awaiting Your Feedback',
+  'Refining basis feedback':'In Progress','On hold':'On Hold','In Development':'In Progress',
+  'Creating Print ready files':'In Progress','Awaiting Content':'Awaiting Your Input',
+  'Submitted - Handover remaining':'In Progress','Handover Complete':'Completed','Complete':'Completed',
+};
+
+const INTERNAL_STATUS_OPTIONS = ['Yet to begin','Kick-off','Research','In Progress','Design – In Progress','Presentation scheduled','Awaiting Feedback','Refining basis feedback','On hold','In Development','Creating Print ready files','Awaiting Content','Submitted - Handover remaining','Handover Complete','Complete'];
+const DELIVERABLE_STATUS_OPTIONS = ['Not Started','In Progress','Ready for Review','Shared with Client','Feedback Received','Revisions in Progress','Approved','Finalised','Delivered'];
+const DEP_STATUS_OPTIONS = ['Pending','Completed'];
+const DEP_PRIORITY_OPTIONS = ['High','Medium','Low'];
+const MEETING_STATUS_OPTIONS = ['Pending','Scheduled','Done'];
+const MEETING_TYPE_OPTIONS = ['Kick-off','Presentation','Review','Check-in','Handover'];
+const ACTIVITY_TYPE_OPTIONS = ['milestone','feedback','received','kickoff','update'];
+const ATTENDEE_OPTIONS = {
+  'Ritika Barmecha': ['Ritika Barmecha'],
+  'The Space At 9/2': ['Pragati Todi','Anahita Kayan','Anwesha Mukherjee','Shristi Sharma','Disha Bhattacharya'],
+};
+
+function cColor(s) {
+  const m = {
+    'Not Started':'#ABA49C','In Progress':'#4E7A5A','In Review':'#7B6FAB',
+    'Awaiting Your Feedback':'#C4894A','Awaiting Your Input':'#C4894A',
+    'Completed':'#4E8A88','On Hold':'#B24B43','Ready for Review':'#7B6FAB',
+    'Shared with Client':'#5B7A99','Feedback Received':'#C9A96E',
+    'Revisions in Progress':'#4E7A5A','Approved':'#4E8A88','Finalised':'#4E8A88','Delivered':'#4E8A88',
+  };
+  return m[s] || '#ABA49C';
+}
+function cBg(s) {
+  const m = {
+    'Not Started':'#EDEBE5','In Progress':'#EBF3EC','In Review':'#F2EEFF',
+    'Awaiting Your Feedback':'#FAF0E6','Awaiting Your Input':'#FAF0E6',
+    'Completed':'#EAF3F3','On Hold':'#F9EEEC','Ready for Review':'#F2EEFF',
+    'Shared with Client':'#EEF2F5','Feedback Received':'#F7F0DE',
+    'Revisions in Progress':'#EBF3EC','Approved':'#EAF3F3','Finalised':'#EAF3F3',
+    'Delivered':'#EAF3F3','Scheduled':'#F7F0DE','Pending':'#EEF2F5','Done':'#EAF3F3',
+  };
+  return m[s] || '#EDEBE5';
+}
+function cTextColor(s) {
+  const m = { 'Scheduled':'#C9A96E','Pending':'#7B8EA0','Done':'#4E8A88' };
+  return m[s] || cColor(s);
+}
+
+/* ═══════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════ */
+function pd(s)      { return new Date(s + 'T12:00:00'); }
+function fmtDate(d) { return pd(d).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }); }
+function fmtShort(d){ return pd(d).toLocaleDateString('en-GB', { day:'numeric', month:'short' }); }
+function uid()      { return '_' + Math.random().toString(36).slice(2,9); }
+function addDays(dateStr, n) { const d = pd(dateStr); d.setDate(d.getDate() + n); return d.toISOString().slice(0,10); }
+
+/* ── DELIVERABLE STATUS GROUPS ── */
+function getStatusGroup(s) {
+  if (['Approved','Finalised','Delivered'].includes(s)) return 'done';
+  if (s === 'Not Started') return 'notstarted';
+  return 'active';
+}
+const DELIVERABLE_GROUPS = {
+  done:       { color:'#4E8A88', label:'Complete' },
+  active:     { color:'#C9A96E', label:'In Progress' },
+  notstarted: { color:'#E4E1DB', label:'Not Started' },
+};
+const STATUS_CYCLE = ['Not Started','In Progress','Ready for Review','Delivered'];
+const PHASE_SHORT  = {
+  'Discovery & Inputs':'Discovery','Brand Strategy & Naming':'Strategy & Naming',
+  'Visual Identity Development':'VI Dev','Photography & Social Media':'Photo & Social',
+  'Finalisation & Handover':'Finalisation',
+};
+
+/* ── DATA MIGRATION (handles old JSONbin / localStorage structure) ── */
+const PHASE_MIGRATE = {};
+
+/* ── MEETING → PHASE KEYWORD MATCHING ──────────────────────────────────
+   Because meeting dates get edited/rescheduled, we match by title keywords
+   rather than date range. Order matters — more specific first.
+─────────────────────────────────────────────────────────────────────── */
+const PHASE_MEETING_MATCH = [
+  { id:'di',  keys:['questionnaire','discovery','kick-off','kickoff'] },
+  { id:'bs',  keys:['strategy presentation','naming','narrative'] },
+  { id:'vid', keys:['visual identity','vi presentation','logo'] },
+  { id:'ba',  keys:['social media grid','photography','social'] },
+  { id:'fh',  keys:['manual','handover','closure'] },
+];
+function meetingPhaseId(meeting) {
+  const t = (meeting.title || '').toLowerCase();
+  const m = PHASE_MEETING_MATCH.find(({keys}) => keys.some(k => t.includes(k)));
+  return m ? m.id : null;
+}
+function migrateDeliverables(list) {
+  return list.map(d => ({ ...d, phase: PHASE_MIGRATE[d.phase] ?? d.phase }));
+}
+const DEP_MIGRATE = {};
+const PRESENTATION_MIGRATE = {};
+function migratePresentations(list) {
+  return list.map(p => {
+    const patch = PRESENTATION_MIGRATE[p.id];
+    return patch ? { ...p, ...patch } : p;
+  });
+}
+function migrateDeps(list) {
+  return list.map(d => {
+    const patch = DEP_MIGRATE[d.id];
+    if (!patch) return d;
+    return { ...d, description: patch.description, due: patch.due };
+  });
+}
+function migrateMeetings(list) {
+  return list.map(m => ({
+    ...m,
+    paymentDue: m.paymentDue || m.title === 'Low Fidelity Presentation',
+    attendees: m.attendees || [],
+  }));
+}
+
+function getUrgency(due) {
+  if (!due) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dueDay = new Date(due + 'T00:00:00'); dueDay.setHours(0, 0, 0, 0);
+  const diff = Math.round((dueDay - today) / 86400000);
+  if (diff < 0)  return 'overdue';
+  if (diff <= 3) return 'urgent';
+  if (diff <= 7) return 'soon';
+  return null;
+}
+
+/* ═══════════════════════════════════════
+   INITIAL DATA
+═══════════════════════════════════════ */
+const INITIAL_PROJECT = {
+  name: 'Ritika Barmecha',
+  category: 'Brand Strategy, Visual Identity & Photography Guidelines',
+  color: '#8A5A6B',
+  startDate: '2026-10-07',
+  endDate: '2027-01-15',
+};
+
+const INITIAL_PHASES = [
+  {
+    id:'di', name:'Discovery & Inputs', start:'2026-10-07', end:'2026-10-16', status:'Kick-off',
+    clientName:'Discovery & Inputs', color:'#4E8A88', light:'#EAF3F3',
+    description:'We begin by understanding the brand’s ambitions, audiences, and context through the kickoff call, a structured questionnaire, and a review of existing material. This phase establishes the foundation for all strategic and creative decisions.',
+    keyOutputs:['Kickoff call','Research & brand questionnaire','Existing visual content & brand assets received','Project brief & goals'],
+  },
+  {
+    id:'bs', name:'Brand Strategy & Naming', start:'2026-10-17', end:'2026-11-13', status:'Yet to begin',
+    clientName:'Brand Strategy & Naming', color:'#7B6FAB', light:'#F2EEFF',
+    description:'We define the brand’s positioning and audience, review the competitive landscape, and build the narrative, tone of voice, and messaging framework. Alongside, we formally explore whether "Ritika Barmecha" is the right brand name and present alternative name options. Trademark, domain and social-handle availability checks, legal clearance and trademark filing are excluded.',
+    keyOutputs:['Brand positioning & audience definition','Competitive landscape review','Brand narrative & tone of voice','Words & phrases to own / avoid','Messaging framework','Strategy Presentation 01','Strategy Presentation 02 + Naming Explorations'],
+  },
+  {
+    id:'vid', name:'Visual Identity Development', start:'2026-11-16', end:'2026-12-15', status:'Yet to begin',
+    clientName:'Visual Identity Development', color:'#8A5A6B', light:'#F6EEF1',
+    description:'Three logo directions are presented at Visual Identity Presentation 01, followed by a revised Presentation 02 that builds upon the selected direction. One consolidated round of feedback is provided on each; minor refinements within the selected direction are included, while a request for a new direction falls outside that round. Once the identity is locked and approved, no further changes to it can be made.',
+    keyOutputs:['Logo design — primary logo, logo mark, logo variation','Colour system','Typographic system','Supporting visual language','Visual Identity Presentation 01 (3 logo directions)','Revised Visual Identity Presentation 02'],
+  },
+  {
+    id:'ba', name:'Photography & Social Media', start:'2026-12-16', end:'2027-01-08', status:'Yet to begin',
+    clientName:'Photography & Social Media', color:'#C4894A', light:'#FAF1E6',
+    description:'We extend the approved identity into a photography guidelines document for Instagram and a ready-to-post social media grid. Photography is supplied by the Client; copy beyond captions, resizing, editable templates, stories, and posting or scheduling are excluded.',
+    keyOutputs:['Photography Guidelines Document (emailed)','12 ready-to-post pieces + 5 highlight covers, with captions','Social Media Grid Presentation'],
+  },
+  {
+    id:'fh', name:'Finalisation & Handover', start:'2027-01-09', end:'2027-01-15', status:'Yet to begin',
+    clientName:'Finalisation & Handover', color:'#5B7A99', light:'#EBF0F6',
+    description:'We consolidate the complete visual identity, messaging system, and usage guidelines into a Brand Identity Manual and hand over all relevant final asset formats and export files. AI/source files, explorations, drafts, and unused concepts are not shared, as per studio policy.',
+    keyOutputs:['Brand Identity Manual (emailed)','Final asset formats & export files'],
+  },
+];
+
+const PHASE_WEIGHTS = {
+  'Discovery & Inputs':0.10,
+  'Brand Strategy & Naming':0.25,
+  'Visual Identity Development':0.35,
+  'Photography & Social Media':0.20,
+  'Finalisation & Handover':0.10,
+};
+
+const INITIAL_TEAM = [
+  { id:'tm1', name:'Pragati Todi',       role:'Project Manager & Strategist', responsibility:'Timeline management, coordination, client communication and brand strategy' },
+  { id:'tm2', name:'Anahita Kayan',      role:'Creative Director',            responsibility:'Creative direction and visual identity oversight' },
+  { id:'tm3', name:'Anwesha Mukherjee',  role:'Strategist',                   responsibility:'Brand strategy, naming, narrative and messaging' },
+  { id:'tm4', name:'Shristi Sharma',     role:'Senior Designer',              responsibility:'Visual identity design and art direction' },
+  { id:'tm5', name:'Disha Bhattacharya', role:'Junior Designer',              responsibility:'Design support, social media grid and asset production' },
+];
+
+const INITIAL_PRESENTATIONS = [
+  { id:'ms1', status:'Scheduled', date:'2026-10-07', notes:'Kickoff Call & Questionnaire Shared' },
+  { id:'ms2', status:'Pending',   date:'2026-10-27', notes:'Presentation 01 — Strategy Presentation 01' },
+  { id:'ms3', status:'Pending',   date:'2026-11-12', notes:'Presentation 02 — Strategy Presentation 02 + Naming Explorations' },
+  { id:'ms4', status:'Pending',   date:'2026-12-01', notes:'Presentation 03 — Visual Identity Presentation 01' },
+  { id:'ms5', status:'Pending',   date:'2026-12-15', notes:'Presentation 04 — Revised | Visual Identity Presentation 02' },
+  { id:'ms6', status:'Pending',   date:'2026-12-23', notes:'Photography Guidelines Document — to be emailed' },
+  { id:'ms7', status:'Pending',   date:'2027-01-07', notes:'Presentation 05 — Social Media Grid Presentation' },
+  { id:'ms8', status:'Pending',   date:'2027-01-15', notes:'Brand Identity Manual — to be emailed' },
+];
+
+const INITIAL_MEETINGS = [
+  {
+    id:'m1', title:'Kickoff Call',
+    date:'2026-10-07', time:'', type:'Kick-off', status:'Scheduled',
+    gmeetLink:'', notesLink:'',
+    summary:'', decisions:'', teamItems:'Share research & brand questionnaire',
+    clientItems:'Share completed research & brand questionnaire and any existing visual content / brand assets', attendees:[],
+  },
+  {
+    id:'m2', title:'Presentation 01 — Strategy Presentation 01',
+    date:'2026-10-27', time:'', type:'Presentation', status:'Pending',
+    gmeetLink:'', notesLink:'',
+    summary:'', decisions:'', teamItems:'', clientItems:'Share consolidated feedback on Strategy Presentation 01', attendees:[],
+  },
+  {
+    id:'m3', title:'Presentation 02 — Strategy Presentation 02 + Naming Explorations',
+    date:'2026-11-12', time:'', type:'Presentation', status:'Pending',
+    gmeetLink:'', notesLink:'',
+    summary:'', decisions:'', teamItems:'', clientItems:'Confirm brand strategy and final brand name', attendees:[],
+  },
+  {
+    id:'m4', title:'Presentation 03 — Visual Identity Presentation 01',
+    date:'2026-12-01', time:'', type:'Presentation', status:'Pending',
+    gmeetLink:'', notesLink:'',
+    summary:'', decisions:'', teamItems:'', clientItems:'Select one of three logo directions and share one consolidated round of feedback', attendees:[],
+  },
+  {
+    id:'m5', title:'Presentation 04 — Revised | Visual Identity Presentation 02',
+    date:'2026-12-15', time:'', type:'Presentation', status:'Pending',
+    gmeetLink:'', notesLink:'',
+    summary:'', decisions:'', teamItems:'', clientItems:'Share one consolidated round of feedback and give final sign-off on the visual identity', attendees:[],
+  },
+  {
+    id:'m6', title:'Presentation 05 — Social Media Grid Presentation',
+    date:'2027-01-07', time:'', type:'Presentation', status:'Pending',
+    gmeetLink:'', notesLink:'',
+    summary:'', decisions:'', teamItems:'', clientItems:'Share feedback on the social media grid', attendees:[],
+  },
+];
+
+const INITIAL_DELIVERABLES = [
+  { id:'d1',  name:'Brand name exploration — "Ritika Barmecha" pros/cons + alternative name options', phase:'Brand Strategy & Naming', status:'Not Started', due:'2026-11-12', description:'Formal exploration of whether "Ritika Barmecha" is the right brand name, plus exploration and presentation of alternative name options. Trademark, domain and social-handle availability checks, formal legal clearance and trademark filing are excluded.' },
+  { id:'d2',  name:'Brand positioning and audience definition', phase:'Brand Strategy & Naming', status:'Not Started', due:'2026-10-27', description:'Core brand positioning and definition of the brand’s audience.' },
+  { id:'d3',  name:'Competitive landscape review',              phase:'Brand Strategy & Naming', status:'Not Started', due:'2026-10-27', description:'Review of the competitive landscape the brand operates in.' },
+  { id:'d4',  name:'Brand narrative and tone of voice principles', phase:'Brand Strategy & Naming', status:'Not Started', due:'2026-11-12', description:'Brand narrative and the principles that guide its tone of voice.' },
+  { id:'d5',  name:'Words and phrases to own / to avoid',       phase:'Brand Strategy & Naming', status:'Not Started', due:'2026-11-12', description:'Vocabulary the brand should own and language it should avoid.' },
+  { id:'d6',  name:'Launch-ready messaging toolkit',            phase:'Brand Strategy & Naming', status:'Not Started', due:'2026-11-12', description:'Final tagline, Instagram bio, founder story, short brand introduction, and enquiry-response language. Product/collection naming principles and FAQs are excluded.' },
+  { id:'d7',  name:'Messaging framework — core statement and communication strategy', phase:'Brand Strategy & Naming', status:'Not Started', due:'2026-11-12', description:'Core brand statement and the communication strategy built around it.' },
+  { id:'d8',  name:'Logo design — primary logo, logo mark, logo variation', phase:'Visual Identity Development', status:'Not Started', due:'2026-12-15', description:'Three logo directions presented at Presentation 03, refined into the final logo suite at Presentation 04.' },
+  { id:'d9',  name:'Colour system — primary & secondary palette with usage guidance', phase:'Visual Identity Development', status:'Not Started', due:'2026-12-15', description:'Primary and secondary colour palette with guidance on usage.' },
+  { id:'d10', name:'Typographic system — type hierarchy and usage principles', phase:'Visual Identity Development', status:'Not Started', due:'2026-12-15', description:'Type hierarchy and principles for typographic usage.' },
+  { id:'d11', name:'Supporting visual language — motifs, patterns, visual elements', phase:'Visual Identity Development', status:'Not Started', due:'2026-12-15', description:'Motifs, patterns and visual elements that extend the identity.' },
+  { id:'d12', name:'Photography guidelines document for Instagram', phase:'Photography & Social Media', status:'Not Started', due:'2026-12-23', description:'Mood/tone, colour grading, lighting, composition, styling, and do’s/don’ts. Shot list, on-ground art direction, and retouching/image-selection are excluded.' },
+  { id:'d13', name:'12 ready-to-post pieces + 5 highlight cover designs, captions included', phase:'Photography & Social Media', status:'Not Started', due:'2027-01-07', description:'Twelve fully designed, ready-to-post pieces and five highlight cover designs with captions. Excluded: copy beyond captions, photography (supplied by the Client), resizing, editable templates, stories, and posting or scheduling.' },
+  { id:'d14', name:'Brand Identity Manual', phase:'Finalisation & Handover', status:'Not Started', due:'2027-01-15', description:'Complete brand identity manual, emailed at handover along with all relevant final asset formats and export files. AI/source files are not provided as per studio policy.' },
+];
+
+const INITIAL_DEPS = [
+  { id:'dep1', title:'Research & Brand Questionnaire',         description:'Completed answers to the research & brand questionnaire — required to kick off strategy work.', status:'Pending', due:'2026-10-12', priority:'High' },
+  { id:'dep2', title:'Existing Visual Content & Brand Assets', description:'Existing images, content, and brand assets to inform discovery and strategy.', status:'Pending', due:'2026-10-12', priority:'Medium' },
+  { id:'dep3', title:'Strategy Presentation 01 Feedback',      description:'Consolidated feedback on Strategy Presentation 01, needed to develop Strategy Presentation 02 and naming.', status:'Pending', due:'2026-10-30', priority:'High' },
+  { id:'dep4', title:'Brand Strategy & Name Confirmation',     description:'Sign-off on the brand strategy and final brand name, needed before visual identity work begins.', status:'Pending', due:'2026-11-14', priority:'High' },
+  { id:'dep5', title:'Visual Identity Presentation 01 Feedback', description:'Selection of one of three logo directions with one consolidated round of feedback. A request for a new direction falls outside this round.', status:'Pending', due:'2026-12-04', priority:'High' },
+  { id:'dep6', title:'Visual Identity Final Sign-off',         description:'One consolidated round of feedback on Presentation 04 and final approval of the identity. Once approved and the project moves on, the identity cannot be revisited.', status:'Pending', due:'2026-12-17', priority:'High' },
+  { id:'dep7', title:'Photography for Social Media Posts',     description:'Photography for the 12 ready-to-post pieces is supplied by the Client.', status:'Pending', due:'2026-12-22', priority:'High' },
+  { id:'dep8', title:'Social Media Grid Feedback',             description:'Feedback on the Social Media Grid Presentation, needed before final handover.', status:'Pending', due:'2027-01-09', priority:'Medium' },
+];
+
+const INITIAL_LINKS = [
+  {
+    id:'lnk_team', label:'By — Ritika Barmecha',
+    subFolders:[
+      { id:'lnk_t1', label:'Assets',    url:'#', icon:'📁' },
+      { id:'lnk_t2', label:'Pictures',  url:'#', icon:'🖼' },
+      { id:'lnk_t3', label:'Documents', url:'#', icon:'📄' },
+    ],
+  },
+  {
+    id:'lnk_studio', label:'By — The Space At 9/2',
+    subFolders:[
+      { id:'lnk_s1', label:'Presentations', url:'#', icon:'📊' },
+      { id:'lnk_s2', label:'Assets',        url:'#', icon:'📁' },
+    ],
+  },
+];
+
+/* ═══════════════════════════════════════
+   PROGRESS COMPUTATION
+═══════════════════════════════════════ */
+function computeProgress(phases, presentations) {
+  const vp     = phases.filter(p => PHASE_WEIGHTS[p.name]);
+  const rawW   = vp.map(p => PHASE_WEIGHTS[p.name]);
+  const totalW = rawW.reduce((s,w)=>s+w, 0);
+  const normW  = rawW.map(w => w/totalW);
+  let completedW=0, currentW=0, currentPct=0, foundCurrent=false;
+  vp.forEach((phase, i) => {
+    if (foundCurrent) return;
+    if (COMPLETE_STATUSES.has(phase.status)) { completedW += normW[i]; return; }
+    foundCurrent = true;
+    currentW = normW[i];
+    const ps = pd(phase.start), pe = new Date(pd(phase.end).getTime() + 86400000);
+    const phaseEvts = presentations.filter(e => { const d=pd(e.date); return d>=ps&&d<=pe; });
+    const done = phaseEvts.filter(e=>e.status==='Done'||e.status==='Received').length;
+    currentPct = phaseEvts.length > 0 ? done/phaseEvts.length : 0;
+  });
+  return Math.round((completedW + currentW*currentPct)*100);
+}
+
+function getCurrentPhase(phases) {
+  return phases.find(p => ACTIVE_STATUSES.has(p.status))
+      || phases.find(p => p.status === 'Yet to begin')
+      || phases[phases.length - 1];
+}
+
+function getNextMilestone(presentations) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return [...presentations]
+    .filter(e => (e.status === 'Scheduled' || e.status === 'Pending') && pd(e.date) >= today)
+    .sort((a,b) => pd(a.date)-pd(b.date))[0] || null;
+}
+
+/* ═══════════════════════════════════════
+   PRIMITIVE COMPONENTS
+═══════════════════════════════════════ */
+function Pill({ children, color, bg, size=8, style={} }) {
+  const T = useContext(ThemeCtx);
+  return (
+    <span style={{ display:'inline-block', padding:'2px 7px', borderRadius:2, fontSize:size, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:color||T.text2, background:bg||T.bgAlt, border:`1px solid ${(color||T.border)}22`, whiteSpace:'nowrap', fontFamily:T.sans, ...style }}>
+      {children}
+    </span>
+  );
+}
+
+function FormField({ label, children, half }) {
+  const T = useContext(ThemeCtx);
+  return (
+    <div style={{ marginBottom:16, flex: half ? 1 : undefined }}>
+      <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:T.text3, marginBottom:7 }}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
+function FormRow({ children }) {
+  return <div style={{ display:'flex', gap:12 }}>{children}</div>;
+}
+
+/* ═══════════════════════════════════════
+   EDIT BADGE (shows when edit mode on)
+═══════════════════════════════════════ */
+function EditBadge({ onClick, label='Edit' }) {
+  const T = useContext(ThemeCtx);
+  return (
+    <button className="edit-btn" onClick={e=>{ e.stopPropagation(); onClick(); }}
+      style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:T.accent }}>
+      ✏ {label}
+    </button>
+  );
+}
+
+/* ═══════════════════════════════════════
+   EDITABLE TEXT (inline)
+═══════════════════════════════════════ */
+function EditableText({ value, onChange, style, placeholder, editMode, multiline, as:Tag='span' }) {
+  const T = useContext(ThemeCtx);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState(value);
+  const ref = useRef();
+
+  useEffect(() => { setDraft(value); }, [value]);
+  useEffect(() => { if (editing && ref.current) ref.current.focus(); }, [editing]);
+
+  const save = () => { if (draft !== value) onChange(draft); setEditing(false); };
+  const cancel = () => { setDraft(value); setEditing(false); };
+
+  if (editing) {
+    if (multiline) return (
+      <textarea ref={ref} value={draft} onChange={e=>setDraft(e.target.value)}
+        onBlur={save} onKeyDown={e=>{ if(e.key==='Escape') cancel(); }}
+        style={{ ...style, border:'1.5px solid '+T.accent, borderRadius:4, padding:'4px 8px', background:T.accentBg, outline:'none', width:'100%', resize:'vertical', minHeight:60, lineHeight:1.65 }} />
+    );
+    return (
+      <input ref={ref} type="text" value={draft} onChange={e=>setDraft(e.target.value)}
+        onBlur={save} onKeyDown={e=>{ if(e.key==='Enter') save(); if(e.key==='Escape') cancel(); }}
+        style={{ ...style, border:'1.5px solid '+T.accent, borderRadius:4, padding:'2px 8px', background:T.accentBg, outline:'none' }} />
+    );
+  }
+
+  if (!editMode) return <Tag style={style}>{value || ''}</Tag>;
+
+  return (
+    <Tag style={{ ...style, borderBottom:`1px dashed ${T.accent}60`, cursor:'text', display:'inline' }}
+      onClick={() => { setDraft(value); setEditing(true); }} title="Click to edit">
+      {value || <span style={{ color:T.text3, fontStyle:'italic', fontWeight:400 }}>{placeholder || 'Click to edit'}</span>}
+    </Tag>
+  );
+}
+
+/* ═══════════════════════════════════════
+   EDIT MODAL (all types)
+═══════════════════════════════════════ */
+function EditModal({ modal, onClose, onSave, onDelete, phases, deliverables, meetings, presentations, deps, onShiftDates, team }) {
+  const T = useContext(ThemeCtx);
+  const [draft, setDraft] = useState({ ...modal.item });
+  const [shiftLinked, setShiftLinked] = useState(true);
+  const up = (k, v) => setDraft(p => ({ ...p, [k]: v }));
+
+  const inputStyle = { background:T.surface, border:`1px solid ${T.border}`, color:T.text1 };
+  const typeLabels = { phase:'Phase', team:'Team Member', meeting:'Meeting', deliverable:'Deliverable', dep:'Input Required', activity:'Update', link:'Link' };
+  const label = typeLabels[modal.type] || modal.type;
+
+  /* ── Linked-date shift (phase end date changed) ── */
+  const phaseDiff = (modal.type === 'phase' && !modal.isNew && modal.item.end && draft.end)
+    ? Math.round((pd(draft.end) - pd(modal.item.end)) / 86400000)
+    : 0;
+  const phaseLinkedCount = (() => {
+    if (modal.type !== 'phase' || modal.isNew || phaseDiff === 0) return 0;
+    const ps = pd(modal.item.start), pe = new Date(pd(modal.item.end).getTime() + 86400000);
+    const linkedDelivs = deliverables.filter(d => d.phase === modal.item.name).length;
+    const linkedMtgs   = meetings.filter(m => meetingPhaseId(m) === modal.item.id).length;
+    const linkedPres   = presentations.filter(p => { const dt = pd(p.date); return dt >= ps && dt <= pe; }).length;
+    const linkedDeps   = deps.filter(d => { if (!d.due) return false; const dt = pd(d.due); return dt >= ps && dt <= pe; }).length;
+    return linkedDelivs + linkedMtgs + linkedPres + linkedDeps;
+  })();
+  const handleSave = () => {
+    if (modal.type === 'phase' && phaseDiff !== 0 && phaseLinkedCount > 0 && shiftLinked) {
+      onShiftDates(modal.item, phaseDiff);
+    }
+    onSave(draft);
+  };
+
+  function renderForm() {
+    switch (modal.type) {
+
+      case 'phase': return (
+        <>
+          <FormRow>
+            <FormField label="Phase Name" half><input className="form-input" style={inputStyle} value={draft.clientName||''} onChange={e=>up('clientName',e.target.value)} placeholder="Client-facing name" /></FormField>
+            <FormField label="Internal Name" half><input className="form-input" style={inputStyle} value={draft.name||''} onChange={e=>up('name',e.target.value)} placeholder="Internal name" /></FormField>
+          </FormRow>
+          <FormField label="Status">
+            <select className="form-select" style={inputStyle} value={draft.status||''} onChange={e=>up('status',e.target.value)}>
+              {INTERNAL_STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}
+            </select>
+          </FormField>
+          <FormRow>
+            <FormField label="Start Date" half><input className="form-input" style={inputStyle} type="date" value={draft.start||''} onChange={e=>up('start',e.target.value)} /></FormField>
+            <FormField label="End Date" half><input className="form-input" style={inputStyle} type="date" value={draft.end||''} onChange={e=>up('end',e.target.value)} /></FormField>
+          </FormRow>
+          {phaseDiff !== 0 && phaseLinkedCount > 0 && (
+            <div style={{ marginTop:-4, marginBottom:16, padding:'10px 12px', background:T.accentBg, borderRadius:6, border:`1px solid ${T.accent}30` }}>
+              <label style={{ display:'flex', alignItems:'flex-start', gap:8, cursor:'pointer' }}>
+                <input type="checkbox" checked={shiftLinked} onChange={e=>setShiftLinked(e.target.checked)} style={{ marginTop:2 }} />
+                <span style={{ fontFamily:T.sans, fontSize:10, color:T.text2, lineHeight:1.5 }}>
+                  End date moved by {phaseDiff > 0 ? '+' : ''}{phaseDiff} day{Math.abs(phaseDiff)===1?'':'s'} — also shift {phaseLinkedCount} linked date{phaseLinkedCount===1?'':'s'} (deliverables, meetings, milestones, and client items due in this phase) by the same amount.
+                </span>
+              </label>
+            </div>
+          )}
+          <FormField label="Description">
+            <textarea className="form-textarea" style={inputStyle} value={draft.description||''} onChange={e=>up('description',e.target.value)} placeholder="What happens in this phase..." />
+          </FormField>
+          <FormField label="Key Outputs (one per line)">
+            <textarea className="form-textarea" style={inputStyle} value={(draft.keyOutputs||[]).join('\n')} onChange={e=>up('keyOutputs', e.target.value.split('\n').filter(Boolean))} placeholder="Deliverable or output..." />
+          </FormField>
+        </>
+      );
+
+      case 'team': return (
+        <>
+          <FormField label="Name"><input className="form-input" style={inputStyle} value={draft.name||''} onChange={e=>up('name',e.target.value)} placeholder="Full name" /></FormField>
+          <FormField label="Role"><input className="form-input" style={inputStyle} value={draft.role||''} onChange={e=>up('role',e.target.value)} placeholder="e.g. Lead Designer" /></FormField>
+          <FormField label="Responsibility">
+            <textarea className="form-textarea" style={{ ...inputStyle, minHeight:60 }} value={draft.responsibility||''} onChange={e=>up('responsibility',e.target.value)} placeholder="Brief description of their role in the project" />
+          </FormField>
+        </>
+      );
+
+      case 'meeting': return (
+        <>
+          <FormField label="Title"><input className="form-input" style={inputStyle} value={draft.title||''} onChange={e=>up('title',e.target.value)} /></FormField>
+          <FormRow>
+            <FormField label="Date" half><input className="form-input" style={inputStyle} type="date" value={draft.date||''} onChange={e=>up('date',e.target.value)} /></FormField>
+            <FormField label="Time" half><input className="form-input" style={inputStyle} value={draft.time||''} onChange={e=>up('time',e.target.value)} placeholder="11:00 AM IST" /></FormField>
+          </FormRow>
+          <FormRow>
+            <FormField label="Type" half>
+              {(() => {
+                const isPreset = MEETING_TYPE_OPTIONS.includes(draft.type);
+                return (
+                  <>
+                    <select className="form-select" style={inputStyle} value={isPreset ? draft.type : '__custom__'}
+                      onChange={e => up('type', e.target.value === '__custom__' ? '' : e.target.value)}>
+                      {MEETING_TYPE_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+                      <option value="__custom__">Other…</option>
+                    </select>
+                    {!isPreset && (
+                      <input className="form-input" style={{ ...inputStyle, marginTop:8 }} value={draft.type || ''} onChange={e=>up('type', e.target.value)}
+                        placeholder="Enter meeting type" />
+                    )}
+                  </>
+                );
+              })()}
+            </FormField>
+            <FormField label="Status" half>
+              <select className="form-select" style={inputStyle} value={draft.status||''} onChange={e=>up('status',e.target.value)}>
+                {MEETING_STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}
+              </select>
+            </FormField>
+          </FormRow>
+          <FormField label="Format">
+            <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}>
+              <input type="checkbox" checked={!!draft.inPerson} onChange={e=>up('inPerson', e.target.checked)} />
+              <span style={{ fontFamily:T.sans, fontSize:11, color:T.text1 }}>Some attendees are joining in person (hybrid)</span>
+            </label>
+          </FormField>
+          {draft.inPerson && (
+            <FormField label="Location / Venue"><input className="form-input" style={inputStyle} value={draft.location||''} onChange={e=>up('location',e.target.value)} placeholder="e.g. Studio address or venue" /></FormField>
+          )}
+          <FormField label="Meeting Link (Google Meet or Zoom)"><input className="form-input" style={inputStyle} value={draft.gmeetLink||''} onChange={e=>up('gmeetLink',e.target.value)} placeholder="https://..." /></FormField>
+          <FormField label="Meeting Notes">
+            <textarea className="form-input" style={{ ...inputStyle, minHeight:90, resize:'vertical', lineHeight:1.6 }}
+              value={draft.notesLink||''} onChange={e=>up('notesLink',e.target.value)}
+              placeholder="Add meeting notes, key points, agenda, or context here..." />
+          </FormField>
+          <FormField label="Attach PDF">
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {draft.pdfData ? (
+                <div style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', background:T.bgAlt, borderRadius:5, border:`1px solid ${T.border}` }}>
+                  <span style={{ fontSize:14 }}>📎</span>
+                  <span style={{ fontFamily:T.sans, fontSize:11, color:T.text2, flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{draft.pdfName || 'attachment.pdf'}</span>
+                  <button type="button" onClick={() => { up('pdfData', ''); up('pdfName', ''); }}
+                    style={{ fontFamily:T.sans, fontSize:9, color:T.overload, background:'none', border:`1px solid ${T.overload}40`, borderRadius:3, padding:'2px 8px', cursor:'pointer' }}>Remove</button>
+                </div>
+              ) : (
+                <label style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', background:T.bgAlt, border:`1px dashed ${T.border}`, borderRadius:5, cursor:'pointer', width:'fit-content' }}>
+                  <span style={{ fontSize:13 }}>📎</span>
+                  <span style={{ fontFamily:T.sans, fontSize:11, color:T.text2 }}>Upload PDF</span>
+                  <input type="file" accept="application/pdf" style={{ display:'none' }}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 5000000) { alert('PDF is too large (max 5MB). Please compress it first.'); e.target.value=''; return; }
+                      const reader = new FileReader();
+                      reader.onload = ev => { up('pdfData', ev.target.result); up('pdfName', file.name); };
+                      reader.readAsDataURL(file);
+                    }} />
+                </label>
+              )}
+              {draft.pdfData && <span style={{ fontFamily:T.sans, fontSize:9, color:T.text3 }}>PDF will be saved with this meeting.</span>}
+            </div>
+          </FormField>
+          <FormField label="Attendees">
+            <select className="form-select" style={inputStyle} value=""
+              onChange={e => {
+                const name = e.target.value;
+                if (name && !(draft.attendees||[]).includes(name))
+                  up('attendees', [...(draft.attendees||[]), name]);
+              }}>
+              <option value="">Add attendee…</option>
+              {(() => {
+                const spaceNames = (team||[]).map(t => t.name);
+                const groups = [
+                  { label: 'The Space At 9/2', names: spaceNames.length ? spaceNames : ATTENDEE_OPTIONS['The Space At 9/2'] || [] },
+                  { label: 'Ritika Barmecha',  names: ATTENDEE_OPTIONS['Ritika Barmecha'] || [] },
+                ];
+                return groups.map(({ label, names }) => (
+                <optgroup key={label} label={label}>
+                  {names.filter(n => !(draft.attendees||[]).includes(n)).map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </optgroup>
+              ));
+              })()}
+            </select>
+            {(draft.attendees||[]).length > 0 && (
+              <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:8 }}>
+                {(draft.attendees||[]).map(name => (
+                  <span key={name} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 9px', borderRadius:3, background:T.bgAlt, border:`1px solid ${T.border}`, fontFamily:T.sans, fontSize:10, color:T.text1 }}>
+                    {name}
+                    <button onClick={() => up('attendees', draft.attendees.filter(n => n !== name))}
+                      style={{ background:'none', border:'none', cursor:'pointer', color:T.text3, fontSize:13, lineHeight:1, padding:0, marginLeft:1 }}>×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </FormField>
+          {(draft.status === 'Done') && <>
+            <FormField label="Meeting Summary">
+              <textarea className="form-textarea" style={inputStyle} value={draft.summary||''} onChange={e=>up('summary',e.target.value)} placeholder="What was discussed..." />
+            </FormField>
+            <FormField label="Key Decisions (one per line)">
+              <textarea className="form-textarea" style={inputStyle} value={draft.decisions||''} onChange={e=>up('decisions',e.target.value)} placeholder="Decision made..." />
+            </FormField>
+            <FormField label="Studio Action Items (one per line, format: Name: Task [done])">
+              <textarea className="form-textarea" style={inputStyle} value={draft.teamItems||''} onChange={e=>up('teamItems',e.target.value)} placeholder="Anahita: Review and share updated moodboard [done]" />
+            </FormField>
+            <FormField label="Client Action Items (one per line, add [done] when complete)">
+              <textarea className="form-textarea" style={inputStyle} value={draft.clientItems||''} onChange={e=>up('clientItems',e.target.value)} placeholder="Review wireframes and share feedback" />
+            </FormField>
+          </>}
+        </>
+      );
+
+      case 'deliverable': return (
+        <>
+          <FormField label="Deliverable Name"><input className="form-input" style={inputStyle} value={draft.name||''} onChange={e=>up('name',e.target.value)} /></FormField>
+          <FormRow>
+            <FormField label="Phase" half>
+              <select className="form-select" style={inputStyle} value={draft.phase||''} onChange={e=>up('phase',e.target.value)}>
+                {phases.map(p=><option key={p.id} value={p.name}>{p.clientName||p.name}</option>)}
+              </select>
+            </FormField>
+            <FormField label="Status" half>
+              <select className="form-select" style={inputStyle} value={draft.status||''} onChange={e=>up('status',e.target.value)}>
+                {DELIVERABLE_STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}
+              </select>
+            </FormField>
+          </FormRow>
+          <FormField label="Expected Date"><input className="form-input" style={inputStyle} type="date" value={draft.due||''} onChange={e=>up('due',e.target.value)} /></FormField>
+          <FormField label="Description">
+            <textarea className="form-textarea" style={inputStyle} value={draft.description||''} onChange={e=>up('description',e.target.value)} />
+          </FormField>
+        </>
+      );
+
+      case 'dep': return (
+        <>
+          <FormField label="Title"><input className="form-input" style={inputStyle} value={draft.title||''} onChange={e=>up('title',e.target.value)} /></FormField>
+          <FormField label="Description">
+            <textarea className="form-textarea" style={inputStyle} value={draft.description||''} onChange={e=>up('description',e.target.value)} placeholder="What you need and why it matters..." />
+          </FormField>
+          <FormRow>
+            <FormField label="Needed By" half><input className="form-input" style={inputStyle} type="date" value={draft.due||''} onChange={e=>up('due',e.target.value)} /></FormField>
+            <FormField label="Priority" half>
+              <select className="form-select" style={inputStyle} value={draft.priority||'Medium'} onChange={e=>up('priority',e.target.value)}>
+                {DEP_PRIORITY_OPTIONS.map(s=><option key={s}>{s}</option>)}
+              </select>
+            </FormField>
+          </FormRow>
+          <FormField label="Status">
+            <select className="form-select" style={inputStyle} value={draft.status||'Pending'} onChange={e=>up('status',e.target.value)}>
+              {DEP_STATUS_OPTIONS.map(s=><option key={s}>{s}</option>)}
+            </select>
+          </FormField>
+        </>
+      );
+
+      case 'activity': return (
+        <>
+          <FormRow>
+            <FormField label="Date" half><input className="form-input" style={inputStyle} type="date" value={draft.date||''} onChange={e=>up('date',e.target.value)} /></FormField>
+            <FormField label="Type" half>
+              <select className="form-select" style={inputStyle} value={draft.type||'update'} onChange={e=>up('type',e.target.value)}>
+                {ACTIVITY_TYPE_OPTIONS.map(s=><option key={s}>{s}</option>)}
+              </select>
+            </FormField>
+          </FormRow>
+          <FormField label="Title"><input className="form-input" style={inputStyle} value={draft.title||''} onChange={e=>up('title',e.target.value)} /></FormField>
+          <FormField label="Body">
+            <textarea className="form-textarea" style={inputStyle} value={draft.body||''} onChange={e=>up('body',e.target.value)} placeholder="What happened..." />
+          </FormField>
+        </>
+      );
+
+      case 'link': return (
+        <>
+          <FormRow>
+            <FormField label="Icon (emoji)" half><input className="form-input" style={inputStyle} value={draft.icon||''} onChange={e=>up('icon',e.target.value)} placeholder="📁" /></FormField>
+            <FormField label="Label" half><input className="form-input" style={inputStyle} value={draft.label||''} onChange={e=>up('label',e.target.value)} placeholder="Project Folder" /></FormField>
+          </FormRow>
+          <FormField label="URL"><input className="form-input" style={inputStyle} value={draft.url||''} onChange={e=>up('url',e.target.value)} placeholder="https://..." /></FormField>
+        </>
+      );
+
+      default: return null;
+    }
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(26,25,23,0.65)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)' }}
+      onClick={onClose}>
+      <div style={{ background:T.surface, borderRadius:10, maxWidth:560, width:'calc(100% - 48px)', maxHeight:'90vh', overflow:'auto', padding:'32px 36px', boxShadow:'0 24px 64px rgba(0,0,0,0.28)', border:`1px solid ${T.border}` }}
+        onClick={e=>e.stopPropagation()}>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
+          <div style={{ fontFamily:T.serif, fontSize:18, fontWeight:500, color:T.text1 }}>{modal.isNew ? `Add ${label}` : `Edit ${label}`}</div>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:T.text3, fontSize:20, padding:'0 2px', lineHeight:1 }}>✕</button>
+        </div>
+
+        {renderForm()}
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:24, paddingTop:20, borderTop:`1px solid ${T.borderHair}` }}>
+          {!modal.isNew && onDelete ? (
+            <button onClick={() => { if(window.confirm('Remove this item?')) onDelete(draft); }}
+              style={{ background:'none', border:`1px solid #B24B4340`, borderRadius:6, padding:'8px 14px', color:'#B24B43', fontSize:11, fontWeight:600, cursor:'pointer', letterSpacing:'0.04em' }}>
+              Remove
+            </button>
+          ) : <div/>}
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={onClose}
+              style={{ background:T.bg, border:`1px solid ${T.border}`, borderRadius:6, padding:'8px 18px', color:T.text2, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+              Cancel
+            </button>
+            <button onClick={handleSave}
+              style={{ background:T.accent, border:'none', borderRadius:6, padding:'8px 20px', color:'#fff', fontSize:11, fontWeight:700, letterSpacing:'0.06em', cursor:'pointer' }}>
+              {modal.isNew ? 'Add' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   MEETING VIEW MODAL
+═══════════════════════════════════════ */
+function parseMeetingForView(m) {
+  const decisions = (m.decisions||'').split('\n').filter(Boolean);
+  const teamItems = (m.teamItems||'').split('\n').filter(Boolean).map(line => {
+    const done = line.includes('[done]');
+    const clean = line.replace('[done]','').trim();
+    const colonIdx = clean.indexOf(':');
+    const who  = colonIdx > -1 ? clean.slice(0, colonIdx).trim() : '';
+    const task = colonIdx > -1 ? clean.slice(colonIdx+1).trim() : clean;
+    return { who, task, done };
+  });
+  const clientItems = (m.clientItems||'').split('\n').filter(Boolean).map(line => {
+    const done = line.includes('[done]');
+    const task = line.replace('[done]','').trim();
+    return { task, done };
+  });
+  return { decisions, teamItems, clientItems };
+}
+
+function MeetingViewModal({ meeting, onClose, team }) {
+  const T = useContext(ThemeCtx);
+  if (!meeting) return null;
+  const todayV = new Date(); todayV.setHours(0,0,0,0);
+  const isPast = meeting.status === 'Done' || pd(meeting.date) < todayV;
+  const { decisions, teamItems, clientItems } = parseMeetingForView(meeting);
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(26,25,23,0.65)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)' }}
+      onClick={onClose}>
+      <div style={{ background:T.surface, borderRadius:10, maxWidth:580, width:'calc(100% - 48px)', maxHeight:'88vh', overflow:'auto', padding:'32px 36px', boxShadow:'0 24px 64px rgba(0,0,0,0.28)', border:`1px solid ${T.border}` }}
+        onClick={e=>e.stopPropagation()}>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
+          <div>
+            <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:T.text3, marginBottom:6 }}>{meeting.type} · {fmtDate(meeting.date)}</div>
+            <div style={{ fontFamily:T.serif, fontSize:20, fontWeight:500, color:T.text1, lineHeight:1.2 }}>{meeting.title}</div>
+            {meeting.time && <div style={{ fontFamily:T.sans, fontSize:11, color:T.text3, marginTop:5 }}>{meeting.time}</div>}
+          </div>
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0, marginLeft:16 }}>
+            <Pill color={cTextColor(meeting.status)} bg={cBg(meeting.status)}>{meeting.status}</Pill>
+            <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:T.text3, fontSize:20, padding:'0 2px', lineHeight:1 }}>✕</button>
+          </div>
+        </div>
+
+        {(meeting.inPerson) && (
+          <div style={{ marginBottom:12 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 15px', background:'#FAF0E6', borderRadius:7, border:'1px solid #EAD2B0' }}>
+              <span style={{ fontSize:15 }}>📍</span>
+              <span style={{ fontFamily:T.sans, fontSize:11, fontWeight:600, color:'#8A5A2A' }}>{meeting.location || 'In-person meeting'}</span>
+            </div>
+          </div>
+        )}
+        {(meeting.gmeetLink) && (() => {
+          const isZoom = meeting.gmeetLink.includes('zoom.us');
+          return (
+            <div style={{ marginBottom:18 }}>
+              <a href={meeting.gmeetLink} target="_blank" rel="noopener noreferrer"
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 15px', background:isZoom?'#EBF5FB':'#F0FAF0', borderRadius:7, textDecoration:'none', border:`1px solid ${isZoom?'#BEE3F8':'#C8E6C9'}` }}>
+                <span style={{ fontSize:15 }}>{isZoom?'🎥':'📹'}</span>
+                <span style={{ fontFamily:T.sans, fontSize:11, fontWeight:600, color:isZoom?'#1A6B9A':'#2E7D32' }}>{isZoom ? 'Join Zoom' : 'Join Google Meet'}</span>
+                <span style={{ fontFamily:T.sans, fontSize:9, color:isZoom?'#3498DB':'#4CAF50', marginLeft:'auto', letterSpacing:'0.08em' }}>Open →</span>
+              </a>
+            </div>
+          );
+        })()}
+        {(meeting.notesLink || meeting.pdfData) && (
+          <div style={{ marginBottom:22, padding:'14px 16px', background:T.bgAlt, borderRadius:7, border:`1px solid ${T.border}` }}>
+            <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:T.text3, marginBottom:10 }}>Meeting Notes</div>
+            {meeting.notesLink && (
+              <div style={{ fontFamily:T.sans, fontSize:12, color:T.text2, lineHeight:1.7, whiteSpace:'pre-wrap', marginBottom: meeting.pdfData ? 12 : 0 }}>{meeting.notesLink}</div>
+            )}
+            {meeting.pdfData && (
+              <a href={meeting.pdfData} download={meeting.pdfName || 'meeting-notes.pdf'}
+                style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 14px', background:T.surface, border:`1px solid ${T.border}`, borderRadius:5, textDecoration:'none', marginTop: meeting.notesLink ? 4 : 0 }}>
+                <span style={{ fontSize:13 }}>📎</span>
+                <span style={{ fontFamily:T.sans, fontSize:11, fontWeight:600, color:T.accent }}>{meeting.pdfName || 'meeting-notes.pdf'}</span>
+                <span style={{ fontFamily:T.sans, fontSize:9, color:T.text3, marginLeft:4 }}>Download</span>
+              </a>
+            )}
+          </div>
+        )}
+
+        {(meeting.attendees||[]).length > 0 && (() => {
+          const spaceNames = (team||[]).map(t => t.name).length
+            ? (team||[]).map(t => t.name)
+            : (ATTENDEE_OPTIONS['The Space At 9/2'] || []);
+          const groups = [
+            { group: 'The Space At 9/2', names: spaceNames },
+            { group: 'Ritika Barmecha',  names: ATTENDEE_OPTIONS['Ritika Barmecha'] || [] },
+          ];
+          const allKnown = groups.flatMap(g => g.names);
+          const byTeam = groups.map(({ group, names }) => ({
+            group,
+            members: (meeting.attendees||[]).filter(a => names.includes(a)),
+          })).filter(g => g.members.length > 0);
+          const others = (meeting.attendees||[]).filter(a => !allKnown.includes(a));
+          if (others.length) byTeam.push({ group: 'Other', members: others });
+          return (
+            <div style={{ marginBottom:22 }}>
+              <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:T.text3, marginBottom:12 }}>Attendees</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                {byTeam.map(({ group, members }) => (
+                  <div key={group}>
+                    <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:T.text3, marginBottom:7 }}>{group}</div>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                      {members.map(name => (
+                        <span key={name} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:4, background:T.bgAlt, border:`1px solid ${T.border}`, fontFamily:T.sans, fontSize:11, color:T.text1 }}>
+                          <span style={{ width:20, height:20, borderRadius:'50%', background:T.accentBg, display:'inline-flex', alignItems:'center', justifyContent:'center', fontFamily:T.serif, fontSize:9, fontWeight:500, color:T.accent, flexShrink:0 }}>
+                            {name.charAt(0)}
+                          </span>
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {(meeting.summary || decisions.length > 0 || teamItems.length > 0 || clientItems.length > 0) ? (
+          <>
+            {meeting.summary && (
+              <div style={{ marginBottom:22 }}>
+                <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:T.text3, marginBottom:9 }}>Meeting Summary</div>
+                <div style={{ fontFamily:T.sans, fontSize:12, lineHeight:1.75, color:T.text2 }}>{meeting.summary}</div>
+              </div>
+            )}
+            {decisions.length > 0 && (
+              <div style={{ marginBottom:22 }}>
+                <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:T.text3, marginBottom:10 }}>Key Decisions</div>
+                {decisions.map((d,i) => (
+                  <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start', marginBottom:8 }}>
+                    <span style={{ color:T.complete, fontSize:13, flexShrink:0, marginTop:1 }}>✓</span>
+                    <span style={{ fontFamily:T.sans, fontSize:12, color:T.text1, lineHeight:1.55 }}>{d}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {(teamItems.length > 0 || clientItems.length > 0) && (
+              <div>
+                <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:T.text3, marginBottom:13 }}>Action Items</div>
+                {teamItems.length > 0 && (
+                  <div style={{ marginBottom:16 }}>
+                    <div style={{ marginBottom:9 }}><span style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', background:T.bgAlt, borderRadius:3, padding:'3px 8px', border:`1px solid ${T.border}`, color:T.text3 }}>Studio</span></div>
+                    {teamItems.map((item,i) => (
+                      <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start', marginBottom:8, opacity:item.done?0.45:1 }}>
+                        <span style={{ color:item.done?T.complete:T.border, fontSize:13, flexShrink:0 }}>{item.done?'✓':'○'}</span>
+                        <div>
+                          <span style={{ fontFamily:T.sans, fontSize:11, color:item.done?T.text3:T.text1, textDecoration:item.done?'line-through':'none' }}>{item.task}</span>
+                          {item.who && <span style={{ fontFamily:T.sans, fontSize:9, color:T.text3, marginLeft:7 }}>— {item.who}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {clientItems.length > 0 && (
+                  <div>
+                    <div style={{ marginBottom:9 }}><span style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', background:T.accentBg, borderRadius:3, padding:'3px 8px', border:`1px solid ${T.accent}30`, color:T.accent }}>From You</span></div>
+                    {clientItems.map((item,i) => (
+                      <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start', marginBottom:8, opacity:item.done?0.45:1 }}>
+                        <span style={{ color:item.done?T.complete:T.accent, fontSize:13, flexShrink:0 }}>{item.done?'✓':'○'}</span>
+                        <span style={{ fontFamily:T.sans, fontSize:11, color:item.done?T.text3:T.text1, textDecoration:item.done?'line-through':'none' }}>{item.task}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ padding:'16px 18px', background:T.bg, borderRadius:7, border:`1px solid ${T.border}` }}>
+            <div style={{ fontFamily:T.sans, fontSize:12, color:T.text2, lineHeight:1.65 }}>No notes added yet. Notes, decisions, and action items will appear here once added.</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   APP
+═══════════════════════════════════════ */
+function App() {
+  const [project,       setProject]       = useState(INITIAL_PROJECT);
+  const [phases,        setPhases]        = useState(INITIAL_PHASES);
+  const [team,          setTeam]          = useState(INITIAL_TEAM);
+  const [presentations, setPresentations] = useState(INITIAL_PRESENTATIONS);
+  const [meetings,      setMeetings]      = useState(INITIAL_MEETINGS);
+  const [deliverables,  setDeliverables]  = useState(INITIAL_DELIVERABLES);
+  const [deps,          setDeps]          = useState(INITIAL_DEPS);
+  const [links,         setLinks]         = useState(INITIAL_LINKS);
+
+  const [editMode,      setEditMode]      = useState(false);
+  const [editModal,     setEditModal]     = useState(null);
+  const [activeMeeting, setActiveMeeting] = useState(null);
+  const [expandedDep,   setExpandedDep]   = useState(null);
+
+  const [showPasscode, setShowPasscode]     = useState(false);
+  const [passcodeVal,  setPasscodeVal]      = useState('');
+  const [passcodeErr,  setPasscodeErr]      = useState(false);
+
+  const submitPasscode = () => {
+    if (passcodeVal === EDIT_PASSCODE) {
+      setEditMode(true); setShowPasscode(false); setPasscodeVal(''); setPasscodeErr(false);
+    } else {
+      setPasscodeErr(true);
+    }
+  };
+
+  // NEW: Dual theme
+  const [isDark, setIsDark] = useState(false);
+  const T = isDark ? DARK : LIGHT;
+
+  // NEW: Timeline expansion
+  const [activePhase, setActivePhase] = useState(null);
+
+  // NEW: Meeting tabs
+  const [meetingTab, setMeetingTab] = useState('upcoming');
+
+  // NEW: Past meetings show-all
+  const [showAllPast, setShowAllPast] = useState(false);
+
+  // NEW: Deliverable groups open/closed
+  const [openGroups, setOpenGroups] = useState({});
+
+  /* ── LOAD + PERSIST  (JSONbin shared state, localStorage fallback) ── */
+  const [loading, setLoading] = useState(JSONBIN_OK);
+  const canSave = useRef(false);
+
+  // Update body bg/color when theme changes
+  useEffect(() => {
+    document.body.style.background = T.bg;
+    document.body.style.color = T.text1;
+  }, [isDark]);
+
+  useEffect(() => {
+    // No backend → restore from localStorage and continue
+    if (!JSONBIN_OK) {
+      try {
+        if (localStorage.getItem('rb_version') === String(DATA_VERSION)) {
+          const r = (k, set, migrate) => { const v = localStorage.getItem(k); if (v) set(migrate ? migrate(JSON.parse(v)) : JSON.parse(v)); };
+          r('rb_project',       setProject);
+          r('rb_phases',        setPhases);
+          r('rb_team',          setTeam);
+          r('rb_presentations', setPresentations, migratePresentations);
+          r('rb_meetings',      setMeetings,      migrateMeetings);
+          r('rb_deliverables',  setDeliverables,  migrateDeliverables);
+          r('rb_deps',          setDeps,  migrateDeps);
+          r('rb_links',         setLinks);
+        }
+      } catch {}
+      canSave.current = true;
+      return;
+    }
+    // Backend → fetch latest snapshot
+    const loadStart = Date.now();
+    const MIN_LOADER_MS = 2000;
+    (async () => {
+      try {
+        const res = await fetch(
+          `https://api.jsonbin.io/v3/b/${JSONBIN_ID}/latest`,
+          { headers: { 'X-Master-Key': JSONBIN_KEY } }
+        );
+        if (res.ok) {
+          const { record } = await res.json();
+          if (record.project)               setProject(record.project);
+          if (record.phases?.length)        setPhases(record.phases);
+          if (record.team?.length)          setTeam(record.team);
+          if (record.presentations?.length) setPresentations(migratePresentations(record.presentations));
+          if (record.meetings?.length)      setMeetings(migrateMeetings(record.meetings));
+          if (record.deliverables?.length)  setDeliverables(migrateDeliverables(record.deliverables));
+          if (record.deps?.length)          setDeps(migrateDeps(record.deps));
+          if (record.links?.length)         setLinks(record.links);
+        }
+      } catch (err) {
+        console.warn('Ritika Barmecha portal: JSONbin load failed; falling back to defaults', err);
+      }
+      const elapsed = Date.now() - loadStart;
+      setTimeout(() => setLoading(false), Math.max(0, MIN_LOADER_MS - elapsed));
+      canSave.current = true;
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!canSave.current) return;
+    // localStorage mirror (always)
+    try {
+      localStorage.setItem('rb_version',       String(DATA_VERSION));
+      localStorage.setItem('rb_project',       JSON.stringify(project));
+      localStorage.setItem('rb_phases',        JSON.stringify(phases));
+      localStorage.setItem('rb_team',          JSON.stringify(team));
+      localStorage.setItem('rb_presentations', JSON.stringify(presentations));
+      localStorage.setItem('rb_meetings',      JSON.stringify(meetings));
+      localStorage.setItem('rb_deliverables',  JSON.stringify(deliverables));
+      localStorage.setItem('rb_deps',          JSON.stringify(deps));
+      localStorage.setItem('rb_links',         JSON.stringify(links));
+    } catch {}
+    if (!JSONBIN_OK) return;
+    // Debounced PUT to avoid spamming JSONbin during rapid edits
+    const tid = setTimeout(() => {
+      fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+        body:    JSON.stringify({
+          version: DATA_VERSION,
+          project, phases, team, presentations,
+          meetings, deliverables, deps, links,
+        }),
+      }).catch(err => console.warn('Ritika Barmecha portal: JSONbin save failed', err));
+    }, 600);
+    return () => clearTimeout(tid);
+  }, [project, phases, team, presentations, meetings, deliverables, deps, links]);
+
+  /* ── DERIVED PHASE STATUS + DISPLAY DATE ───────────────────────────────
+     Three signals combined; highest level wins (phases never downgraded).
+     Meetings are matched by TITLE KEYWORDS so rescheduled dates still link
+     correctly. displayStart is set from the earliest keyword-matched meeting
+     so the phase node shows the real meeting date, not the stale stored date.
+
+     Level scale:
+       0  Yet to begin / On hold
+       1  Kick-off  (meeting Scheduled)
+       2  In Progress  (deliverable active/done · meeting Done · milestone Done)
+       3  Awaiting Feedback  (milestone Scheduled)
+       5  Submitted — Handover remaining
+       6  Handover Complete  (all phase deliverables done)
+  ─────────────────────────────────────────────────────────────────────── */
+  /* ── DERIVED MILESTONES ─────────────────────────────────────────────
+     Milestones (presentations, e.g. "ms1") and meetings (e.g. "m1") are
+     tracked as separate records but represent the same real-world event,
+     linked here by matching numeric ID suffix (ms1 ↔ m1, ms2 ↔ m2, ...).
+     Matching by ID rather than date means a rescheduled meeting still
+     resolves correctly — the milestone's date AND status follow the
+     meeting automatically, so the "Next" banner never shows a stale date.
+  ─────────────────────────────────────────────────────────────────────── */
+  const effectivePresentations = useMemo(() => {
+    return presentations.map(p => {
+      const n = p.id.match(/^ms(\d+)$/)?.[1];
+      const linked = n ? meetings.find(m => m.id === 'm' + n) : null;
+      if (!linked) return p;
+      const status = linked.status === 'Done' ? 'Done' : linked.status === 'Scheduled' ? 'Scheduled' : 'Pending';
+      const date = linked.date || p.date;
+      return (status !== p.status || date !== p.date) ? { ...p, status, date } : p;
+    });
+  }, [presentations, meetings]);
+
+  const effectivePhases = useMemo(() => {
+    const lvl = s => ({
+      'Yet to begin':0, 'On hold':0,
+      'Kick-off':1, 'Research':1,
+      'In Progress':2, 'Design – In Progress':2, 'In Development':2,
+      'Awaiting Content':3, 'Presentation scheduled':3, 'Awaiting Feedback':3,
+      'Refining basis feedback':4, 'Creating Print ready files':4,
+      'Submitted - Handover remaining':5,
+      'Handover Complete':6, 'Complete':7,
+    }[s] ?? 0);
+
+    return phases.map(phase => {
+      let best         = phase.status; // start from manually-stored status
+      let displayStart = null;         // overrides shown date if meetings found
+
+      // ── 1. Deliverables ────────────────────────────────────────────
+      {
+        const dels = deliverables.filter(d => d.phase === phase.name);
+        if (dels.length > 0) {
+          const allDone   = dels.every(d => getStatusGroup(d.status) === 'done');
+          const anyActive = dels.some(d =>  getStatusGroup(d.status) === 'active');
+          const anyDone   = dels.some(d =>  getStatusGroup(d.status) === 'done');
+          const candidate = allDone ? 'Handover Complete'
+                          : (anyActive || anyDone) ? 'In Progress'
+                          : 'Yet to begin';
+          if (lvl(candidate) > lvl(best)) best = candidate;
+        }
+      }
+
+      // ── 2. Meetings — keyword-matched (primary) or date range (fallback) ─
+      const keyMtgs = meetings.filter(m => meetingPhaseId(m) === phase.id);
+      const origPs  = pd(phase.start);
+      const origPe  = new Date(pd(phase.end).getTime() + 86400000);
+      const rangeMtgs = meetings.filter(m => { const d = pd(m.date); return d >= origPs && d <= origPe; });
+      const phaseMtgs = keyMtgs.length > 0 ? keyMtgs : rangeMtgs;
+
+      if (phaseMtgs.length > 0) {
+        // Derive displayStart from earliest matched meeting
+        const earliest = [...phaseMtgs].sort((a,b) => pd(a.date)-pd(b.date))[0].date;
+        displayStart = earliest;
+        if (phaseMtgs.some(m => m.status === 'Done')      && lvl('In Progress') > lvl(best)) best = 'In Progress';
+        if (phaseMtgs.some(m => m.status === 'Scheduled') && lvl('Kick-off')    > lvl(best)) best = 'Kick-off';
+      }
+
+      // ── 3. Milestone presentations — always use original date range ─
+      const phasePres = effectivePresentations.filter(e => { const d = pd(e.date); return d >= origPs && d <= origPe; });
+      if (phasePres.some(e => e.status === 'Done')      && lvl('In Progress')           > lvl(best)) best = 'In Progress';
+      if (phasePres.some(e => e.status === 'Scheduled') && lvl('Presentation scheduled') > lvl(best)) best = 'Presentation scheduled';
+
+      const changed = best !== phase.status || displayStart !== null;
+      return changed
+        ? { ...phase, status: best, ...(displayStart ? { displayStart } : {}) }
+        : phase;
+    });
+  }, [phases, deliverables, meetings, effectivePresentations]);
+
+  const progress        = computeProgress(effectivePhases, effectivePresentations);
+  const currentPhase    = getCurrentPhase(effectivePhases);
+  const clientSt        = currentPhase ? (INTERNAL_TO_CLIENT[currentPhase.status] || 'In Progress') : 'In Progress';
+  const clientPhaseName = currentPhase ? (currentPhase.clientName || currentPhase.name) : '';
+  const nextMilestone   = getNextMilestone(effectivePresentations);
+  const pendingDeps     = deps.filter(d => d.status !== 'Completed').length;
+  const today0 = (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
+  const upcomingMeetings = meetings.filter(m => m.status !== 'Done' && pd(m.date) >= today0).sort((a,b) => pd(a.date)-pd(b.date));
+  const pastMeetings     = meetings.filter(m => m.status === 'Done'  || pd(m.date) < today0).sort((a,b) => pd(b.date)-pd(a.date));
+
+  /* ── SAVE / DELETE HANDLERS ── */
+  function saveEdit(draft) {
+    if (!editModal) return;
+    const { type, isNew } = editModal;
+    const withId = isNew ? { ...draft, id: type + uid() } : draft;
+    if (type === 'phase')       { isNew ? setPhases(p=>[...p,withId])       : setPhases(p=>p.map(x=>x.id===draft.id?draft:x)); }
+    else if (type === 'team')   { isNew ? setTeam(p=>[...p,withId])         : setTeam(p=>p.map(x=>x.id===draft.id?draft:x)); }
+    else if (type === 'meeting'){
+      isNew ? setMeetings(p=>[...p,withId]) : setMeetings(p=>p.map(x=>x.id===draft.id?draft:x));
+      // Sync linked milestone (m1↔ms1, m2↔ms2, ...) — write date+status back to presentations state
+      if (!isNew) {
+        const n = draft.id.match(/^m(\d+)$/)?.[1];
+        if (n) {
+          const msStatus = draft.status === 'Done' ? 'Done' : draft.status === 'Scheduled' ? 'Scheduled' : 'Pending';
+          setPresentations(p => p.map(x => x.id === 'ms'+n ? { ...x, date: draft.date || x.date, status: msStatus } : x));
+        }
+      }
+    }
+    else if (type === 'deliverable'){ isNew ? setDeliverables(p=>[...p,withId]) : setDeliverables(p=>p.map(x=>x.id===draft.id?draft:x)); }
+    else if (type === 'dep')    { isNew ? setDeps(p=>[...p,withId])         : setDeps(p=>p.map(x=>x.id===draft.id?draft:x)); }
+    else if (type === 'link')   {
+      if (isNew) { setLinks(p=>p.map(folder=>folder.id===draft._folderId ? { ...folder, subFolders:[...folder.subFolders, withId] } : folder)); }
+      else { setLinks(p=>p.map(folder=>({ ...folder, subFolders: folder.subFolders.map(sf=>sf.id===draft.id?{...draft}:sf) }))); }
+    }
+    setEditModal(null);
+  }
+
+  function deleteEdit(draft) {
+    const { type } = editModal;
+    if (type === 'phase')       setPhases(p=>p.filter(x=>x.id!==draft.id));
+    else if (type === 'team')   setTeam(p=>p.filter(x=>x.id!==draft.id));
+    else if (type === 'meeting')setMeetings(p=>p.filter(x=>x.id!==draft.id));
+    else if (type === 'deliverable') setDeliverables(p=>p.filter(x=>x.id!==draft.id));
+    else if (type === 'dep')    setDeps(p=>p.filter(x=>x.id!==draft.id));
+    else if (type === 'link')   setLinks(p=>p.map(folder=>({ ...folder, subFolders: folder.subFolders.filter(sf=>sf.id!==draft.id) })));
+    setEditModal(null);
+  }
+
+  const openEdit = (type, item) => setEditModal({ type, item: { ...item }, isNew: false });
+  const openAdd  = (type, def)  => setEditModal({ type, item: def, isNew: true });
+
+  function shiftPhaseDates(phase, diff) {
+    if (!diff) return;
+    const ps = pd(phase.start), pe = new Date(pd(phase.end).getTime() + 86400000);
+    setDeliverables(list => list.map(d => d.phase === phase.name && d.due ? { ...d, due: addDays(d.due, diff) } : d));
+    setMeetings(list => list.map(m => meetingPhaseId(m) === phase.id ? { ...m, date: addDays(m.date, diff) } : m));
+    setPresentations(list => list.map(p => { const dt = pd(p.date); return (dt >= ps && dt <= pe) ? { ...p, date: addDays(p.date, diff) } : p; }));
+    setDeps(list => list.map(d => { if (!d.due) return d; const dt = pd(d.due); return (dt >= ps && dt <= pe) ? { ...d, due: addDays(d.due, diff) } : d; }));
+  }
+
+  const cycleStatus = (d) => {
+    const idx  = STATUS_CYCLE.indexOf(d.status);
+    const next = STATUS_CYCLE[idx === -1 || idx === STATUS_CYCLE.length - 1 ? 0 : idx + 1];
+    setDeliverables(p => p.map(x => x.id === d.id ? { ...x, status: next } : x));
+  };
+
+  const movePhase = (id, dir) => {
+    setPhases(prev => {
+      const idx = prev.findIndex(p => p.id === id);
+      if (dir === 'left' && idx === 0) return prev;
+      if (dir === 'right' && idx === prev.length - 1) return prev;
+      const next = [...prev];
+      const swap = dir === 'left' ? idx - 1 : idx + 1;
+      [next[idx], next[swap]] = [next[swap], next[idx]];
+      return next;
+    });
+  };
+
+  const moveDeliverable = (id, dir) => {
+    setDeliverables(prev => {
+      const idx = prev.findIndex(d => d.id === id);
+      if (dir === 'up' && idx === 0) return prev;
+      if (dir === 'down' && idx === prev.length - 1) return prev;
+      const next = [...prev];
+      const swap = dir === 'up' ? idx - 1 : idx + 1;
+      [next[idx], next[swap]] = [next[swap], next[idx]];
+      return next;
+    });
+  };
+
+  // Build deliverable phase groups — always show all phases in order
+  const validPhaseNames = phases.map(p => p.name);
+  const phaseGroupOrder = [...validPhaseNames];
+  const phaseGroupMap = {};
+  validPhaseNames.forEach(n => { phaseGroupMap[n] = []; });
+  deliverables.forEach(d => {
+    // If phase is valid, use it; otherwise assign by due date falling within a phase range
+    let pk = validPhaseNames.includes(d.phase) ? d.phase : null;
+    if (!pk && d.due) {
+      const due = pd(d.due);
+      pk = phases.find(p => due >= pd(p.start) && due <= pd(p.end))?.name || null;
+    }
+    pk = pk || validPhaseNames[0] || 'Deliverables';
+    if (!phaseGroupMap[pk]) { phaseGroupMap[pk] = []; phaseGroupOrder.push(pk); }
+    phaseGroupMap[pk].push(d);
+  });
+
+  // Initialize openGroups — all collapsed by default
+  useEffect(() => {
+    const init = {};
+    phaseGroupOrder.forEach(p => { init[p] = false; });
+    setOpenGroups(init);
+  }, []);
+
+  const toggleGroup = (phase) => {
+    setOpenGroups(prev => ({ ...prev, [phase]: !prev[phase] }));
+  };
+
+  const scrollTo = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior:'smooth', block:'start' });
+  };
+
+  /* ── LOADING SCREEN ── */
+  if (loading) {
+    return (
+      <div style={{ minHeight:'100vh', background:'#F7F5F0', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:24 }}>
+        <div style={{ display:'inline-flex', flexDirection:'column', alignItems:'center', gap:8 }}>
+          <div style={{ fontFamily:"'Playfair Display', Georgia, serif", fontSize:36, fontWeight:500, color:'#1A1917', letterSpacing:'0.04em' }}>Ritika Barmecha</div>
+          <div style={{ fontFamily:"'Inter', sans-serif", fontSize:8.5, fontWeight:600, letterSpacing:'0.22em', textTransform:'uppercase', color:'#9E9890' }}>Project Portal</div>
+          <div style={{ marginTop:20, opacity:0.7 }}><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAADwAAAAhwCAYAAACQvstyAAC9gklEQVR4nOzbMQEAIAzAMMC/53EigR6JghronpkFAAAAAAAAAAAAAAAAAAA0nN8BAAAAAAAAAAAAAAAAAADAYwAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBiAAYAAAAAAAAAAAAAAAAAgBADMAAAAAAAAAAAAAAAAAAAhBiAAQAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAAAhBmAAAAAAAAAAAAAAAAAAAAgxAAMAAAAAAAAAAAAAAAAAQIgBGAAAAAAAAAAAAAAAAAAAQgzAAAAAAAAAAAAAAAAAAAAQYgAGAAAAAAAAAAAAAAAAAIAQAzAAAAAAAAAAAAAAAAAAAIQYgAEAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAAAIQZgAAAAAAAAAAAAAAAAAAAIMQADAAAAAAAAAAAAAAAAAECIARgAAAAAAAAAAAAAAAAAAEIMwAAAAAAAAAAAAAAAAAAAEGIABgAAAAAAAAAAAAAAAACAEAMwAAAAAAAAAAAAAAAAAACEGIABAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAAAACEGYAAAAAAAAAAAAAAAAAAACDEAAwAAAAAAAAAAAAAAAABAiAEYAAAAAAAAAAAAAAAAAABCDMAAAAAAAAAAAAAAAAAAABBy2bv7mDvr+o7jv9PcChmPf2zDAbY4H9mkjbNAHBTmpMWsFGczXbQP0WXKKIg4cbQTFidtaBc0hlZKxD8sFMiMwiwFx8CpgGYgatq61ceEkrplm1n6MOfUP67ld7APksLuc/ecc33uc16v5A534dzX9b3Ouc65/yDvfgXAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAAAAAAAAAAAEEEwAAAAAAAAAAAAAAAAAAAEEQADAAAAAAAAAAAAAAAAAAAQQTAAAAAAAAAAAAAAAAAAAAQRAAMAAAAAAAAAAAAAAAAAABBBMAAAAAAAAAAAAAAAAAAABBEAAwAAAAAAAAA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Y78AAAAAAAAAAAAAAAAAAABqTwAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAQEIEwAAAAAAAAAAAAAAAAAAAkBABMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAAACREAAwAAAAAAAAAAAAAAAABAQgTAAAAAAAAAAAAAAAAAAACQEAEwAAAAAAAAAAAAAAAAAAAkRAAMAAAAAAAAAAAAAAAAAAAJEQADAAAAAAAAAAAAAAAAAEBCBMAAAAAAAAAAAAAAAAAAAJAQATAAAAAAAAAAAAAAAAAAACREAAzw/9m3YwEAAACAQf7W09hRHgEAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAAAAAAAAAAAAAAAAAIwIwAAAAAAAAAAAAAAAAAAAMCIAAwAAAAAAAAAAAAAAAADAiAAMAAAAAAAAAAAAAAAAAAAjAjAAAFD7dkwAAACAMMj+qa2xA3oAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAAIQIwAAAAAAAAAAAAAAAAAACECMAAAAAAAAAAAAAAAAAAABAiAAMAAAAAAAAAAAAAAAAAQIgADAAAAAAAAAAAAAAAAAAA6zjmFaIJEuPllQAAAABJRU5ErkJggg==" alt="The Space at 9/2" style={{ height:140, width:'auto' }} /></div>
+        </div>
+        <div style={{ fontFamily:"'Inter', sans-serif", fontSize:9, color:'#9E9890', letterSpacing:'0.06em' }}>Loading latest…</div>
+      </div>
+    );
+  }
+
+  const navLinks = [
+    { id:'overview', label:'Overview' },
+    { id:'timeline', label:'Timeline' },
+    { id:'team', label:'Team' },
+    { id:'meetings', label:'Meetings' },
+    { id:'deliverables', label:'Deliverables' },
+    { id:'files', label:'Files' },
+  ];
+
+  /* ── RENDER ── */
+  return (
+    <ThemeCtx.Provider value={T}>
+    <div style={{ minHeight:'100vh', background:T.bg, color:T.text1 }}>
+
+      {/* ════════════════════════════════
+          NAVIGATION (sticky, 54px)
+      ════════════════════════════════ */}
+      <header style={{ position:'sticky', top:0, zIndex:100, height:54, background: isDark ? 'rgba(20,19,18,0.97)' : 'rgba(247,245,240,0.97)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', borderBottom:`1px solid ${T.borderHair}`, display:'flex', alignItems:'center' }}>
+        <div style={{ maxWidth:960, margin:'0 auto', width:'100%', padding:'0 28px', display:'flex', alignItems:'center', gap:20 }}>
+
+
+          {/* Section links */}
+          <nav style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:22 }}>
+            {navLinks.map(link => (
+              <button key={link.id}
+                onClick={() => scrollTo(link.id)}
+                style={{ background:'none', border:'none', cursor:'pointer', fontFamily:T.sans, fontSize:8, fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', color:T.text3, padding:'4px 0', transition:'color 0.15s' }}
+                onMouseEnter={e=>e.currentTarget.style.color=T.text1}
+                onMouseLeave={e=>e.currentTarget.style.color=T.text3}>
+                {link.label}
+              </button>
+            ))}
+          </nav>
+
+          {/* Right: theme toggle + edit */}
+          <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+            <button
+              onClick={() => setIsDark(d => !d)}
+              style={{ background:'none', border:'none', cursor:'pointer', fontSize:16, color:T.text3, padding:'4px', lineHeight:1, transition:'color 0.15s' }}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {isDark ? '☀' : '◑'}
+            </button>
+            <button
+              onClick={() => editMode ? setEditMode(false) : setShowPasscode(true)}
+              style={{
+                background: editMode ? T.accent : 'transparent',
+                color: editMode ? '#fff' : T.text3,
+                border: `1px solid ${editMode ? T.accent : T.border}`,
+                borderRadius:4, padding:'4px 11px', fontFamily:T.sans, fontSize:8, fontWeight:700,
+                letterSpacing:'0.12em', textTransform:'uppercase', cursor:'pointer',
+                transition:'all 0.18s',
+              }}>
+              {editMode ? '✏ Editing' : '✏ Edit'}
+            </button>
+          </div>
+
+        </div>
+      </header>
+
+      <div style={{ maxWidth:960, margin:'0 auto', padding:'0 28px 80px' }}>
+
+        {/* ════════════════════════════════
+            HERO / OVERVIEW (id="overview")
+        ════════════════════════════════ */}
+        <section id="overview" style={{ paddingTop:56, paddingBottom:48, borderBottom:`1px solid ${T.borderHair}` }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:24, marginBottom:28 }}>
+            {/* Left */}
+            <div>
+              <div style={{ fontFamily:T.sans, fontSize:9, fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:T.text3, marginBottom:8 }}>
+                <EditableText value={project.category} editMode={editMode} onChange={v=>setProject(p=>({...p,category:v}))} style={{ fontFamily:T.sans, fontSize:9, fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:T.text3 }} />
+              </div>
+              <div style={{ fontFamily:T.serif, fontSize:30, fontWeight:500, color:T.text1, lineHeight:1.2 }}>
+                <EditableText value={project.name} editMode={editMode} onChange={v=>setProject(p=>({...p,name:v}))} style={{ fontFamily:T.serif, fontSize:30, fontWeight:500, color:T.text1 }} />
+              </div>
+            </div>
+            {/* Right */}
+            <div style={{ textAlign:'right' }}>
+              <div style={{ fontFamily:T.serif, fontSize:42, fontWeight:400, color:T.text1, lineHeight:1, letterSpacing:'-0.03em' }}>{progress}%</div>
+              <div style={{ fontFamily:T.sans, fontSize:8, color:T.text3, marginTop:4, letterSpacing:'0.06em', textTransform:'uppercase' }}>Overall completion</div>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ height:4, background:T.bgAlt, borderRadius:2, overflow:'hidden', marginBottom:20 }}>
+            <div style={{ height:'100%', width:`${progress}%`, background:`linear-gradient(90deg, ${project.color}, ${project.color}BB)`, borderRadius:2, transition:'width 0.8s ease' }}/>
+          </div>
+
+          {/* Inline metadata */}
+          <div style={{ display:'flex', gap:24, flexWrap:'wrap', alignItems:'center' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontFamily:T.sans, fontSize:9, color:T.text3 }}>Timeline</span>
+              <span style={{ fontFamily:T.sans, fontSize:10, fontWeight:500, color:T.text2 }}>
+                {editMode ? (
+                  <span style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <input type="date" className="form-input" value={project.startDate} onChange={e=>setProject(p=>({...p,startDate:e.target.value}))} style={{ width:120, fontSize:10, padding:'2px 7px', background:T.surface, border:`1px solid ${T.border}`, color:T.text1, borderRadius:4 }} />
+                    <span style={{ color:T.text3 }}>→</span>
+                    <input type="date" className="form-input" value={project.endDate} onChange={e=>setProject(p=>({...p,endDate:e.target.value}))} style={{ width:120, fontSize:10, padding:'2px 7px', background:T.surface, border:`1px solid ${T.border}`, color:T.text1, borderRadius:4 }} />
+                  </span>
+                ) : `${fmtShort(project.startDate)} – ${fmtShort(project.endDate)}`}
+              </span>
+            </div>
+            <span style={{ color:T.borderHair, fontSize:14 }}>·</span>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontFamily:T.sans, fontSize:9, color:T.text3 }}>Phase</span>
+              <span style={{ fontFamily:T.sans, fontSize:10, fontWeight:600, color:T.text1 }}>{clientPhaseName}</span>
+            </div>
+            {nextMilestone && <>
+              <span style={{ color:T.borderHair, fontSize:14 }}>·</span>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <span style={{ fontFamily:T.sans, fontSize:9, color:T.text3 }}>Next</span>
+                <span style={{ fontFamily:T.sans, fontSize:10, fontWeight:600, color:T.accent }}>
+                  {fmtShort(nextMilestone.date)}{nextMilestone.notes ? ` · ${nextMilestone.notes}` : ''}
+                </span>
+              </div>
+            </>}
+          </div>
+        </section>
+
+        {/* ════════════════════════════════
+            HORIZONTAL TIMELINE (id="timeline")
+        ════════════════════════════════ */}
+        <section id="timeline" style={{ paddingTop:48, paddingBottom:48, borderBottom:`1px solid ${T.borderHair}` }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:28 }}>
+            <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:T.text3 }}>Project Phases</div>
+            {editMode && <button className="add-btn" style={{ border:`1px dashed ${T.accent}70`, color:T.accent, padding:'5px 12px', marginTop:0 }} onClick={() => openAdd('phase', { name:'New Phase', clientName:'New Phase', start:'2026-07-01', end:'2026-07-15', status:'Yet to begin', description:'', keyOutputs:[], color:'#ABA49C', light:'#EDEBE5' })}>+ Add Phase</button>}
+          </div>
+
+          {/* Horizontal phase row */}
+          <div style={{ display:'flex', alignItems:'flex-start', overflowX:'auto', paddingTop:8, paddingBottom:8 }}>
+            {effectivePhases.map((phase, i, arr) => {
+              const isComp   = COMPLETE_STATUSES.has(phase.status);
+              const isActive = ACTIVE_STATUSES.has(phase.status);
+              const isLast   = i === arr.length - 1;
+              const isExpanded = activePhase === phase.id;
+              const nodeOpacity = (!isComp && !isActive && !isExpanded) ? 0.45 : 1;
+              const lineColor = isComp ? T.complete : T.borderHair;
+              const color = phase.color || '#ABA49C';
+              const light = phase.light || T.bgAlt;
+
+              return (
+                <div key={phase.id} style={{ display:'flex', alignItems:'flex-start', flex: isLast ? 0 : 1, minWidth:0 }}>
+                  {/* Node + label */}
+                  <div className="phase-node" style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, opacity:nodeOpacity, cursor:'pointer', flexShrink:0 }}
+                    onClick={() => setActivePhase(isExpanded ? null : phase.id)}>
+                    <div style={{
+                      width:28, height:28, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+                      background: isComp ? T.complete : isActive ? 'transparent' : T.bgAlt,
+                      border: isComp ? `2px solid ${T.complete}` : isActive ? `2px solid ${T.accent}` : `2px solid ${T.borderHair}`,
+                      transition:'all 0.2s',
+                      boxShadow: isExpanded ? `0 0 0 3px ${T.text1}30` : 'none',
+                    }}>
+                      {isComp
+                        ? <span style={{ color:'#fff', fontSize:12, fontWeight:700 }}>✓</span>
+                        : <span style={{ fontFamily:T.sans, fontSize:9, fontWeight:700, color:isActive?T.accent:T.text3 }}>{i+1}</span>
+                      }
+                    </div>
+                    <div style={{ textAlign:'center', maxWidth:72 }}>
+                      <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:isExpanded?700:isActive?600:600, color:isExpanded?T.text1:isActive?T.text1:T.text2, letterSpacing:'0.02em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:72 }}>
+                        {PHASE_SHORT[phase.clientName||phase.name] || (phase.clientName||phase.name)}
+                      </div>
+                      <div style={{ fontFamily:T.sans, fontSize:7, color:T.text3, marginTop:2, whiteSpace:'nowrap' }}>{fmtShort(phase.displayStart || phase.start)}</div>
+                      {isExpanded && (
+                        <div style={{ width:0, height:0, borderLeft:'4px solid transparent', borderRight:'4px solid transparent', borderTop:`5px solid ${T.text1}`, margin:'5px auto 0' }} />
+                      )}
+                    </div>
+                  </div>
+                  {/* Connector line */}
+                  {!isLast && (
+                    <div style={{ flex:1, height:2, background:lineColor, marginTop:13, minWidth:12, transition:'background 0.3s' }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Expansion panel */}
+          {activePhase && (() => {
+            const phase = effectivePhases.find(p => p.id === activePhase);
+            if (!phase) return null;
+            const cSt   = INTERNAL_TO_CLIENT[phase.status] || 'Not Started';
+            const color = phase.color || '#ABA49C';
+            const light = phase.light || T.bgAlt;
+            const phaseIdx = phases.findIndex(p => p.id === phase.id);
+
+            // Deliverable progress for this phase
+            const phaseDelivs = deliverables.filter(d => d.phase === phase.name);
+            const doneCount   = phaseDelivs.filter(d => getStatusGroup(d.status) === 'done').length;
+            const activeCount = phaseDelivs.filter(d => getStatusGroup(d.status) === 'active').length;
+            const pct = phaseDelivs.length > 0 ? Math.round((doneCount / phaseDelivs.length) * 100) : null;
+
+            // Linked meetings for this phase
+            const linkedMtgs = meetings.filter(m => meetingPhaseId(m) === phase.id);
+
+            return (
+              <div style={{ marginTop:24, background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, overflow:'hidden', transition:'all 0.2s' }}>
+                {/* Color accent bar */}
+                <div style={{ height:3, background:`linear-gradient(90deg, ${color}, ${color}88)` }} />
+
+                <div style={{ padding:'18px 24px 20px' }}>
+                  {/* Header row */}
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+                    <div style={{ flex:1, minWidth:0, marginRight:16 }}>
+                      <div style={{ fontFamily:T.sans, fontSize:13, fontWeight:600, color:T.text1, marginBottom:6 }}>{phase.clientName || phase.name}</div>
+                      {/* Date range — editable in editMode */}
+                      {editMode ? (
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <input type="date" value={phase.start || ''} onChange={e => setPhases(ps => ps.map(p => p.id===phase.id ? {...p, start:e.target.value} : p))}
+                            style={{ fontFamily:T.sans, fontSize:10, color:T.text2, border:`1px solid ${T.border}`, borderRadius:3, padding:'2px 5px', background:T.bg }} />
+                          <span style={{ fontFamily:T.sans, fontSize:10, color:T.text3 }}>–</span>
+                          <input type="date" value={phase.end || ''} onChange={e => setPhases(ps => ps.map(p => p.id===phase.id ? {...p, end:e.target.value} : p))}
+                            style={{ fontFamily:T.sans, fontSize:10, color:T.text2, border:`1px solid ${T.border}`, borderRadius:3, padding:'2px 5px', background:T.bg }} />
+                        </div>
+                      ) : (
+                        <div style={{ fontFamily:T.sans, fontSize:10, color:T.text3 }}>{fmtShort(phase.start)} – {fmtShort(phase.end)}</div>
+                      )}
+                    </div>
+                    <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
+                      {/* Status — dropdown in editMode, pill otherwise */}
+                      {editMode ? (
+                        <select value={phase.status} onChange={e => setPhases(ps => ps.map(p => p.id===phase.id ? {...p, status:e.target.value} : p))}
+                          style={{ fontFamily:T.sans, fontSize:10, color:T.text2, border:`1px solid ${T.border}`, borderRadius:4, padding:'3px 6px', background:T.bg, cursor:'pointer' }}>
+                          {INTERNAL_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      ) : (
+                        <Pill color={cColor(cSt)} bg={cBg(cSt)} size={7}>{cSt}</Pill>
+                      )}
+                      {editMode && (
+                        <div style={{ display:'flex', gap:3 }}>
+                          <button onClick={() => movePhase(phase.id, 'left')} disabled={phaseIdx === 0} title="Move earlier"
+                            style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:3, padding:'2px 7px', fontSize:10, cursor:phaseIdx===0?'default':'pointer', color:phaseIdx===0?T.text3:T.text2, opacity:phaseIdx===0?0.3:1 }}>←</button>
+                          <button onClick={() => movePhase(phase.id, 'right')} disabled={phaseIdx === phases.length - 1} title="Move later"
+                            style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:3, padding:'2px 7px', fontSize:10, cursor:phaseIdx===phases.length-1?'default':'pointer', color:phaseIdx===phases.length-1?T.text3:T.text2, opacity:phaseIdx===phases.length-1?0.3:1 }}>→</button>
+                          <EditBadge onClick={() => openEdit('phase', phase)} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {phase.description && (
+                    <div style={{ fontFamily:T.sans, fontSize:11, color:T.text2, lineHeight:1.7, marginBottom:14 }}>{phase.description}</div>
+                  )}
+
+                  {/* Deliverable progress bar */}
+                  {phaseDelivs.length > 0 && (
+                    <div style={{ marginBottom:14 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
+                        <span style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:T.text3 }}>Deliverables</span>
+                        <span style={{ fontFamily:T.sans, fontSize:9, color:T.text3 }}>{doneCount} of {phaseDelivs.length} complete{activeCount > 0 ? ` · ${activeCount} in progress` : ''}</span>
+                      </div>
+                      <div style={{ height:4, background:T.bgAlt, borderRadius:2, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:`${pct}%`, background:color, borderRadius:2, transition:'width 0.4s' }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Linked meetings */}
+                  {linkedMtgs.length > 0 && (
+                    <div style={{ marginBottom:14 }}>
+                      <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:T.text3, marginBottom:6 }}>Meetings</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                        {linkedMtgs.map(m => (
+                          <div key={m.id} className={editMode ? 'edit-row' : ''} style={{ display:'flex', alignItems:'center', gap:8, padding:'3px 0' }}>
+                            <span style={{ width:5, height:5, borderRadius:'50%', background: m.status==='Done' ? color : m.status==='Scheduled' ? T.accent : T.text3, flexShrink:0 }} />
+                            <span style={{ fontFamily:T.sans, fontSize:10, color:T.text2, flex:1 }}>{m.title}</span>
+                            <span style={{ fontFamily:T.sans, fontSize:9, color:T.text3 }}>{fmtShort(m.date)}</span>
+                            <span style={{ fontFamily:T.sans, fontSize:8, color: m.status==='Done' ? color : T.text3, opacity:0.8 }}>{m.status}</span>
+                            {editMode && <EditBadge onClick={() => openEdit('meeting', m)} />}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Key outputs */}
+                  {phase.keyOutputs && phase.keyOutputs.length > 0 && (
+                    <div>
+                      <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:T.text3, marginBottom:6 }}>Key Outputs</div>
+                      <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                        {phase.keyOutputs.map((o,j) => (
+                          <span key={j} style={{ fontFamily:T.sans, fontSize:9, color:color, background:light, padding:'3px 9px', borderRadius:3, border:`1px solid ${color}22` }}>{o}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </section>
+
+        {/* ════════════════════════════════
+            TEAM (id="team")
+        ════════════════════════════════ */}
+        <section id="team" style={{ paddingTop:48, paddingBottom:48, borderBottom:`1px solid ${T.borderHair}` }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:28 }}>
+            <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:T.text3 }}>Project Team</div>
+            {editMode && <button className="add-btn" style={{ border:`1px dashed ${T.accent}70`, color:T.accent, padding:'5px 12px', marginTop:0 }} onClick={() => openAdd('team', { name:'', role:'', responsibility:'' })}>+ Add Member</button>}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'0 40px' }}>
+            {team.map((member, i) => (
+              <div key={member.id} className="edit-row" style={{ padding:'20px 0', position:'relative' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+                  <div style={{ width:32, height:32, borderRadius:'50%', background:T.accentBg, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <span style={{ fontFamily:T.serif, fontSize:13, fontWeight:500, color:T.accent }}>{member.name.charAt(0)}</span>
+                  </div>
+                  {editMode && <EditBadge onClick={() => openEdit('team', member)} />}
+                </div>
+                <div style={{ fontFamily:T.sans, fontSize:13, fontWeight:600, color:T.text1, marginBottom:3 }}>{member.name}</div>
+                <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, color:T.accent, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:8 }}>{member.role}</div>
+                {member.responsibility && <div style={{ fontFamily:T.sans, fontSize:11, color:T.text2, lineHeight:1.6 }}>{member.responsibility}</div>}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ════════════════════════════════
+            MEETINGS (id="meetings")
+        ════════════════════════════════ */}
+        <section id="meetings" style={{ paddingTop:48, paddingBottom:48, borderBottom:`1px solid ${T.borderHair}` }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+            <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:T.text3 }}>Meetings &amp; Presentations</div>
+            {editMode && <button className="add-btn" style={{ border:`1px dashed ${T.accent}70`, color:T.accent, padding:'5px 12px', marginTop:0 }} onClick={() => openAdd('meeting', { title:'', date:'', time:'', type:'Presentation', status:'Pending', gmeetLink:'', notesLink:'', pdfData:'', pdfName:'', summary:'', decisions:'', teamItems:'', clientItems:'' })}>+ Add Meeting</button>}
+          </div>
+
+          {/* Tab bar */}
+          <div style={{ display:'flex', gap:20, borderBottom:`1px solid ${T.borderHair}`, marginBottom:24 }}>
+            {[['upcoming','Upcoming'],['past','Past']].map(([key, label]) => (
+              <button key={key}
+                onClick={() => setMeetingTab(key)}
+                style={{
+                  background:'none', border:'none', cursor:'pointer',
+                  fontFamily:T.sans, fontSize:9, fontWeight:600,
+                  color: meetingTab === key ? T.text1 : T.text3,
+                  paddingBottom:10, paddingTop:2,
+                  borderBottom: meetingTab === key ? `1.5px solid ${T.accent}` : '1.5px solid transparent',
+                  transition:'color 0.15s, border-color 0.15s',
+                  letterSpacing:'0.04em',
+                }}>
+                {label} {key === 'upcoming' ? `(${upcomingMeetings.length})` : `(${pastMeetings.length})`}
+              </button>
+            ))}
+          </div>
+
+          {meetingTab === 'upcoming' && (
+            <div>
+              {upcomingMeetings.length === 0 && (
+                <div style={{ fontFamily:T.sans, fontSize:12, color:T.text3, padding:'16px 0' }}>No upcoming meetings scheduled.</div>
+              )}
+              {upcomingMeetings.map((m, i) => (
+                <div key={m.id} className="edit-row accordion-row"
+                  onClick={() => !editMode && setActiveMeeting(m)}
+                  style={{
+                    display:'flex', gap:16, alignItems:'center', padding:'14px 0',
+                    borderBottom: i < upcomingMeetings.length - 1 ? `1px solid ${T.borderHair}` : 'none',
+                    cursor: editMode ? 'default' : 'pointer',
+                  }}
+                  onMouseEnter={e=>{ if(!editMode) e.currentTarget.style.background=T.bgAlt; }}
+                  onMouseLeave={e=>{ e.currentTarget.style.background='transparent'; }}>
+                  {/* Date badge */}
+                  <div style={{ flexShrink:0, width:36, textAlign:'center' }}>
+                    <div style={{ fontFamily:T.serif, fontSize:16, fontWeight:500, color:T.accent, lineHeight:1 }}>{pd(m.date).getDate()}</div>
+                    <div style={{ fontFamily:T.sans, fontSize:7, color:T.text3, textTransform:'uppercase', letterSpacing:'0.1em', marginTop:2 }}>{pd(m.date).toLocaleString('en',{month:'short'})}</div>
+                  </div>
+                  {/* Content */}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontFamily:T.sans, fontSize:13, fontWeight:600, color:T.text1 }}>{m.title}</div>
+                    <div style={{ fontFamily:T.sans, fontSize:9, color:T.text3, marginTop:2 }}>{m.type}{m.time ? ` · ${m.time}` : ''}</div>
+                  </div>
+                  {/* Right */}
+                  <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
+                    {m.paymentDue && (
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 8px', borderRadius:3, fontSize:7, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'#7B4F1A', background:'#FDF0DC', border:'1px solid #C9A96E60', whiteSpace:'nowrap', fontFamily:T.sans }}>
+                        💳 Payment Due
+                      </span>
+                    )}
+                    {m.inPerson && (
+                      <span style={{ padding:'4px 10px', background:'#FAF0E6', color:'#8A5A2A', borderRadius:3, fontSize:8, fontWeight:700, fontFamily:T.sans, letterSpacing:'0.06em', border:'1px solid #EAD2B0', whiteSpace:'nowrap' }}>
+                        📍 In-Person
+                      </span>
+                    )}
+                    {m.gmeetLink && (
+                      <a href={m.gmeetLink} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()}
+                        style={{ padding:'4px 10px', background:m.gmeetLink.includes('zoom.us')?'#EBF5FB':'#F0FAF0', color:m.gmeetLink.includes('zoom.us')?'#1A6B9A':'#2E7D32', borderRadius:3, fontSize:8, fontWeight:700, fontFamily:T.sans, letterSpacing:'0.06em', textDecoration:'none', border:`1px solid ${m.gmeetLink.includes('zoom.us')?'#BEE3F8':'#C8E6C9'}`, whiteSpace:'nowrap' }}>
+                        {m.gmeetLink.includes('zoom.us') ? 'Join Zoom' : 'Join Meet'}
+                      </a>
+                    )}
+                    <Pill color={cTextColor(m.status)} bg={cBg(m.status)} size={7}>{m.status}</Pill>
+                    {editMode ? <EditBadge onClick={() => openEdit('meeting', m)} /> : <span style={{ color:T.text3, fontSize:14 }}>›</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {meetingTab === 'past' && (
+            <div>
+              {pastMeetings.length === 0 && (
+                <div style={{ fontFamily:T.sans, fontSize:12, color:T.text3, padding:'16px 0' }}>No past meetings yet.</div>
+              )}
+              {(showAllPast ? pastMeetings : pastMeetings.slice(0, 3)).map((m, i, arr) => (
+                <div key={m.id} className="edit-row accordion-row"
+                  onClick={() => !editMode && setActiveMeeting(m)}
+                  style={{
+                    display:'flex', gap:16, alignItems:'center', padding:'12px 0',
+                    borderBottom: i < arr.length - 1 ? `1px solid ${T.borderHair}` : 'none',
+                    cursor: editMode ? 'default' : 'pointer',
+                    opacity:0.65,
+                  }}
+                  onMouseEnter={e=>{ e.currentTarget.style.opacity='0.9'; if(!editMode) e.currentTarget.style.background=T.bgAlt; }}
+                  onMouseLeave={e=>{ e.currentTarget.style.opacity='0.65'; e.currentTarget.style.background='transparent'; }}>
+                  <div style={{ flexShrink:0, width:36, textAlign:'center' }}>
+                    <div style={{ fontFamily:T.serif, fontSize:15, fontWeight:500, color:T.text3, lineHeight:1 }}>{pd(m.date).getDate()}</div>
+                    <div style={{ fontFamily:T.sans, fontSize:7, color:T.text3, textTransform:'uppercase', letterSpacing:'0.08em', marginTop:2 }}>{pd(m.date).toLocaleString('en',{month:'short'})}</div>
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontFamily:T.sans, fontSize:12, fontWeight:500, color:T.text2 }}>{m.title}</div>
+                    <div style={{ fontFamily:T.sans, fontSize:9, color:T.text3, marginTop:2 }}>{m.type}</div>
+                  </div>
+                  <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
+                    {editMode ? <EditBadge onClick={() => openEdit('meeting', m)} /> : <span style={{ fontFamily:T.sans, fontSize:9, color:T.text3 }}>View notes ›</span>}
+                  </div>
+                </div>
+              ))}
+              {!showAllPast && pastMeetings.length > 3 && (
+                <button onClick={() => setShowAllPast(true)}
+                  style={{ background:'none', border:'none', cursor:'pointer', fontFamily:T.sans, fontSize:9, color:T.accent, padding:'12px 0', letterSpacing:'0.04em' }}>
+                  Show all ({pastMeetings.length}) →
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* ════════════════════════════════
+            DELIVERABLES (id="deliverables")
+        ════════════════════════════════ */}
+        <section id="deliverables" style={{ paddingTop:48, paddingBottom:48, borderBottom:`1px solid ${T.borderHair}` }}>
+          {(() => {
+            const totalDone = deliverables.filter(d=>getStatusGroup(d.status)==='done').length;
+            const totalAll  = deliverables.length;
+            const overallPct = totalAll > 0 ? Math.round((totalDone/totalAll)*100) : 0;
+            return (
+              <>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:10 }}>
+                  <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:T.text3 }}>Deliverables</div>
+                  <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+                    <span style={{ fontFamily:T.sans, fontSize:9, color:T.text3 }}>{totalDone} of {totalAll} complete</span>
+                    {editMode && <button className="add-btn" style={{ border:`1px dashed ${T.accent}70`, color:T.accent, padding:'5px 12px', marginTop:0 }} onClick={() => openAdd('deliverable', { name:'', phase: phases[0]?.name||'', status:'Not Started', due:'', description:'' })}>+ Add</button>}
+                  </div>
+                </div>
+                {/* Segmented milestone progress bar */}
+                <div style={{ marginBottom:28 }}>
+                  {/* Bar segments */}
+                  <div style={{ display:'flex', gap:3, height:6, marginBottom:8 }}>
+                    {phaseGroupOrder.map((phaseName, i) => {
+                      const grpItems = phaseGroupMap[phaseName] || [];
+                      const grpDone  = grpItems.filter(d => getStatusGroup(d.status) === 'done').length;
+                      const grpPct   = grpItems.length > 0 ? grpDone / grpItems.length : 0;
+                      const segWeight = grpItems.length / totalAll;
+                      const isFirst = i === 0;
+                      const isLast  = i === phaseGroupOrder.length - 1;
+                      const fillColor = grpPct === 1 ? T.complete : T.accent;
+                      return (
+                        <div key={phaseName} style={{ flex: segWeight, position:'relative', background:T.bgAlt, borderRadius: isFirst ? '3px 0 0 3px' : isLast ? '0 3px 3px 0' : 0, overflow:'hidden' }}>
+                          <div style={{ position:'absolute', inset:0, width:`${grpPct*100}%`, background:fillColor, transition:'width 0.5s ease', borderRadius:'inherit' }} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Milestone labels below each segment */}
+                  <div style={{ display:'flex', gap:3 }}>
+                    {phaseGroupOrder.map(phaseName => {
+                      const grpItems = phaseGroupMap[phaseName] || [];
+                      const grpDone  = grpItems.filter(d => getStatusGroup(d.status) === 'done').length;
+                      const segWeight = grpItems.length / totalAll;
+                      const shortName = PHASE_SHORT[phaseName] || phaseName || 'Deliverables';
+                      return (
+                        <div key={phaseName} style={{ flex: segWeight, display:'flex', flexDirection:'column', gap:1 }}>
+                          <div style={{ fontFamily:T.sans, fontSize:7, fontWeight:600, color:T.text3, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{shortName}</div>
+                          <div style={{ fontFamily:T.sans, fontSize:7, color:T.text3, opacity:0.7 }}>{grpDone}/{grpItems.length}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+
+          {editMode && (
+            <div style={{ marginBottom:14, padding:'8px 12px', background:T.bgAlt, borderRadius:4 }}>
+              <span style={{ fontFamily:T.sans, fontSize:9, color:T.text3 }}>✏ Click a status dot to advance · Use edit button for full control</span>
+            </div>
+          )}
+
+          {/* Phase accordion groups */}
+          {phaseGroupOrder.map(phaseName => {
+            const items = phaseGroupMap[phaseName];
+            const doneCount = items.filter(d => getStatusGroup(d.status) === 'done').length;
+            const isOpen = openGroups[phaseName] === true;
+            const shortName = PHASE_SHORT[phaseName] || phaseName || 'Deliverables';
+            const completionRatio = items.length > 0 ? doneCount / items.length : 0;
+
+            return (
+              <div key={phaseName} style={{ marginBottom:4 }}>
+                {/* Accordion header */}
+                <div className="accordion-row"
+                  onClick={() => toggleGroup(phaseName)}
+                  style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 0', cursor:'pointer', borderBottom:`1px solid ${T.borderHair}` }}
+                  onMouseEnter={e=>e.currentTarget.style.background=T.bgAlt}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <div style={{ flex:1, display:'flex', alignItems:'center', gap:14 }}>
+                    <div style={{ fontFamily:T.sans, fontSize:10, fontWeight:600, color:T.text1 }}>{shortName}</div>
+                    {/* Progress bar + count */}
+                    <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                      <div style={{ width:80, height:4, background:T.bgAlt, borderRadius:2, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:`${completionRatio*100}%`, background:completionRatio === 1 ? T.complete : T.accent, borderRadius:2, transition:'width 0.5s ease' }} />
+                      </div>
+                      <span style={{ fontFamily:T.sans, fontSize:8, fontWeight:600, color:completionRatio===1?T.complete:T.text3, minWidth:28 }}>
+                        {doneCount}/{items.length}
+                      </span>
+                    </div>
+                  </div>
+                  <span style={{ color:T.text3, fontSize:12, transform:isOpen?'rotate(90deg)':'none', transition:'transform 0.2s', display:'inline-block' }}>›</span>
+                </div>
+
+                {/* Accordion body */}
+                {isOpen && items.map((d, i) => {
+                  const group    = getStatusGroup(d.status);
+                  const dotColor = DELIVERABLE_GROUPS[group].color;
+                  const globalIdx = deliverables.findIndex(x => x.id === d.id);
+                  return (
+                    <div key={d.id} className="edit-row" style={{ display:'flex', gap:12, padding:'12px 0 12px 16px', borderBottom: i < items.length - 1 ? `1px solid ${T.borderHair}` : 'none' }}>
+                      {/* Status dot */}
+                      <div style={{ flexShrink:0, paddingTop:3 }}>
+                        <div
+                          onClick={() => editMode && cycleStatus(d)}
+                          title={editMode ? `Click to advance: ${d.status}` : d.status}
+                          style={{ width:10, height:10, borderRadius:'50%', background:dotColor, opacity:group==='notstarted'?0.25:1, cursor:editMode?'pointer':'default', transition:'background 0.3s', boxShadow:editMode?`0 0 0 2px ${dotColor}30`:'none' }} />
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+                          <div style={{ flex:1 }}>
+                            <div style={{ fontFamily:T.sans, fontSize:12, fontWeight:600, color:group==='done'?T.text3:T.text1, textDecoration:group==='done'?'line-through':'none', marginBottom:2 }}>{d.name}</div>
+                          </div>
+                          <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
+                            <Pill color={dotColor} bg={cBg(d.status)} size={7}>{d.status}</Pill>
+                            {editMode && (
+                              <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                                <button onClick={() => moveDeliverable(d.id, 'up')} disabled={globalIdx===0}
+                                  style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:2, width:16, height:16, cursor:globalIdx===0?'default':'pointer', color:globalIdx===0?T.text3:T.text2, fontSize:8, lineHeight:1, opacity:globalIdx===0?0.3:1, display:'flex', alignItems:'center', justifyContent:'center' }}>↑</button>
+                                <button onClick={() => moveDeliverable(d.id, 'down')} disabled={globalIdx===deliverables.length-1}
+                                  style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:2, width:16, height:16, cursor:globalIdx===deliverables.length-1?'default':'pointer', color:globalIdx===deliverables.length-1?T.text3:T.text2, fontSize:8, lineHeight:1, opacity:globalIdx===deliverables.length-1?0.3:1, display:'flex', alignItems:'center', justifyContent:'center' }}>↓</button>
+                              </div>
+                            )}
+                            {editMode && <EditBadge onClick={() => openEdit('deliverable', d)} />}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </section>
+
+
+        {/* ════════════════════════════════
+            FILES (id="files")
+        ════════════════════════════════ */}
+        <section id="files" style={{ paddingTop:48, paddingBottom:48 }}>
+          <div style={{ fontFamily:T.sans, fontSize:8, fontWeight:700, letterSpacing:'0.22em', textTransform:'uppercase', color:T.text3, marginBottom:24 }}>Files &amp; Links</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+            {links.map(folder => (
+              <div key={folder.id}>
+                <div style={{ fontFamily:T.sans, fontSize:10, fontWeight:600, color:T.text2, marginBottom:10, display:'flex', alignItems:'center', gap:8 }}>
+                  <span>📁</span>
+                  <span>{folder.label}</span>
+                </div>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                  {folder.subFolders.map(sf => (
+                    <div key={sf.id} className="edit-row" style={{ display:'flex', alignItems:'center', gap:4 }}>
+                      <a href={sf.url} target="_blank" rel="noopener noreferrer"
+                        style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 13px', background:'none', border:`1px solid ${T.border}`, borderRadius:4, textDecoration:'none', transition:'all 0.15s', color:T.text1 }}
+                        onMouseEnter={e=>{ e.currentTarget.style.borderColor=T.accent; e.currentTarget.style.background=T.accentBg; e.currentTarget.style.color=T.accent; }}
+                        onMouseLeave={e=>{ e.currentTarget.style.borderColor=T.border; e.currentTarget.style.background='none'; e.currentTarget.style.color=T.text1; }}>
+                        <span style={{ fontSize:12 }}>{sf.icon}</span>
+                        <span style={{ fontFamily:T.sans, fontSize:11, fontWeight:500 }}>{sf.label}</span>
+                      </a>
+                      {editMode && <EditBadge onClick={() => setEditModal({ type:'link', item:{ ...sf, _folderId: folder.id }, isNew:false })} />}
+                    </div>
+                  ))}
+                  {editMode && <button className="add-btn" style={{ border:`1px dashed ${T.accent}70`, color:T.accent, padding:'5px 12px', marginTop:0 }} onClick={() => setEditModal({ type:'link', item:{ icon:'📄', label:'', url:'', _folderId: folder.id }, isNew:true })}>+ Add Link</button>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+      </div>
+
+      {/* ════════════════════════════════
+          FOOTER
+      ════════════════════════════════ */}
+      <div style={{ borderTop:`1px solid ${T.borderHair}`, padding:'20px 24px', textAlign:'center' }}>
+        <div style={{ fontFamily:T.sans, fontSize:8, color:T.text3, letterSpacing:'0.12em' }}>
+          The Space at 9/2 · Ritika Barmecha · Confidential
+        </div>
+      </div>
+
+      {/* ════════════════════════════════
+          MODALS
+      ════════════════════════════════ */}
+      {showPasscode && (
+        <div style={{ position:'fixed', inset:0, zIndex:400, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(26,25,23,0.55)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)' }}
+          onClick={() => { setShowPasscode(false); setPasscodeVal(''); setPasscodeErr(false); }}>
+          <div style={{ background:T.surface, borderRadius:10, padding:'36px 40px', width:320, boxShadow:'0 24px 64px rgba(0,0,0,0.22)', border:`1px solid ${T.border}` }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontFamily:T.serif, fontSize:18, fontWeight:500, color:T.text1, marginBottom:6 }}>Edit Access</div>
+            <div style={{ fontFamily:T.sans, fontSize:11, color:T.text3, marginBottom:24 }}>Enter the passcode to enable editing.</div>
+            <input
+              type="password"
+              autoFocus
+              value={passcodeVal}
+              onChange={e => { setPasscodeVal(e.target.value); setPasscodeErr(false); }}
+              onKeyDown={e => e.key === 'Enter' && submitPasscode()}
+              placeholder="Passcode"
+              style={{ width:'100%', padding:'10px 14px', borderRadius:6, border:`1.5px solid ${passcodeErr ? '#B24B43' : T.border}`, background:T.bg, color:T.text1, fontFamily:T.sans, fontSize:13, outline:'none', marginBottom: passcodeErr ? 6 : 16, boxSizing:'border-box' }}
+            />
+            {passcodeErr && <div style={{ fontFamily:T.sans, fontSize:10, color:'#B24B43', marginBottom:14 }}>Incorrect passcode. Try again.</div>}
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={() => { setShowPasscode(false); setPasscodeVal(''); setPasscodeErr(false); }}
+                style={{ flex:1, padding:'9px 0', borderRadius:6, border:`1px solid ${T.border}`, background:'none', color:T.text2, fontFamily:T.sans, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={submitPasscode}
+                style={{ flex:1, padding:'9px 0', borderRadius:6, border:'none', background:T.accent, color:'#fff', fontFamily:T.sans, fontSize:11, fontWeight:700, cursor:'pointer', letterSpacing:'0.04em' }}>
+                Enter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {activeMeeting && <MeetingViewModal meeting={activeMeeting} onClose={() => setActiveMeeting(null)} team={team} />}
+      {editModal && (
+        <EditModal
+          modal={editModal}
+          phases={phases}
+          deliverables={deliverables}
+          meetings={meetings}
+          presentations={effectivePresentations}
+          deps={deps}
+          onShiftDates={shiftPhaseDates}
+          team={team}
+          onClose={() => setEditModal(null)}
+          onSave={saveEdit}
+          onDelete={deleteEdit}
+        />
+      )}
+    </div>
+    </ThemeCtx.Provider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
