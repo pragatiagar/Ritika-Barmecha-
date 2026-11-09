@@ -24,7 +24,7 @@
   .form-input:focus { border-color:#C9A96E; }
   .form-textarea { width:100%; padding:9px 12px; border-radius:5px; font-size:12px; outline:none; resize:vertical; min-height:80px; line-height:1.6; transition:border-color 0.15s; }
   .form-textarea:focus { border-color:#C9A96E; }
-  .form-select { width:100%; padding:9px 12px; border-radius:5px; font-size:12px; outline:none; appearance:none; cursor:pointer; }
+  .form-select { width:100%; padding:9px 12px; border-radius:5px; font-size:12px; outline:none; -webkit-appearance:none; appearance:none; cursor:pointer; }
   .form-select:focus { border-color:#C9A96E; }
   .add-btn { display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:4px; font-size:8px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; transition:all 0.15s; background:none; }
   .phase-node { transition:all 0.2s; }
@@ -40,8 +40,21 @@ const { useState, useRef, useEffect, useMemo, createContext, useContext } = Reac
    BACKEND CONFIG  (JSONbin)
 ═══════════════════════════════════════ */
 const JSONBIN_ID   = '6ac5e52eac6210605a1b5c41';
-const JSONBIN_KEY  = '$2a$10$wOPcpLA/TDcCVVNuKP/AOe6sOmwEy984EOZAalafQr4d2rZxgcmZC';
+const STORE_URL    = 'https://pms-zeta-seven.vercel.app/api/bin';   // shared store: internal tracker → private GitHub Gist
 const JSONBIN_OK   = !JSONBIN_ID.includes('YOUR_');
+
+/* Visible notice when the shared data can't be loaded or saved */
+function showSyncWarning(msg) {
+  let el = document.getElementById('sync-warning');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sync-warning';
+    el.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:9999;max-width:calc(100% - 32px);padding:10px 16px;border-radius:6px;background:#B24B43;color:#fff;font:500 12px/1.5 Inter,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,0.15)';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+}
+function hideSyncWarning() { document.getElementById('sync-warning')?.remove(); }
 const DATA_VERSION = 1;
 
 /* ═══════════════════════════════════════
@@ -294,7 +307,6 @@ const INITIAL_PRESENTATIONS = [
   { id:'ms5', status:'Pending',   date:'2026-12-15', notes:'Presentation 04 — Revised | Visual Identity Presentation 02' },
   { id:'ms6', status:'Pending',   date:'2026-12-23', notes:'Photography Guidelines Document — to be emailed' },
   { id:'ms7', status:'Pending',   date:'2027-01-07', notes:'Presentation 05 — Social Media Grid Presentation' },
-  { id:'ms8', status:'Pending',   date:'2027-01-15', notes:'Brand Identity Manual — to be emailed' },
 ];
 
 const INITIAL_MEETINGS = [
@@ -1103,6 +1115,11 @@ function App() {
   /* ── LOAD + PERSIST  (JSONbin shared state, localStorage fallback) ── */
   const [loading, setLoading] = useState(JSONBIN_OK);
   const canSave = useRef(false);
+  const remoteOk  = useRef(false);  // shared data loaded → safe to save back to it
+  const hydrating = useRef(false);  // next save-effect run is just the loaded data, not an edit
+  const lastSaved = useRef(null);   // last body loaded/saved, to skip saves that change nothing
+  const noLocalCopy    = useRef(false);  // store empty and this browser has nothing to move → never upload setup data
+  const needsMigration = useRef(false);  // shared store empty: upload this browser's copy once edit mode is unlocked
 
   // Update body bg/color when theme changes
   useEffect(() => {
@@ -1135,12 +1152,11 @@ function App() {
     const MIN_LOADER_MS = 2000;
     (async () => {
       try {
-        const res = await fetch(
-          `https://api.jsonbin.io/v3/b/${JSONBIN_ID}/latest`,
-          { headers: { 'X-Master-Key': JSONBIN_KEY } }
-        );
+        const res = await fetch(`${STORE_URL}?id=${JSONBIN_ID}`, { cache: 'no-store' });
         if (res.ok) {
           const { record } = await res.json();
+          remoteOk.current = true;
+          hydrating.current = Object.entries(record).some(([k, v]) => k !== 'version' && (Array.isArray(v) ? v.length : v));
           if (record.project)               setProject(record.project);
           if (record.phases?.length)        setPhases(record.phases);
           if (record.team?.length)          setTeam(record.team);
@@ -1154,6 +1170,27 @@ function App() {
       } catch (err) {
         console.warn('Ritika Barmecha portal: JSONbin load failed; falling back to defaults', err);
       }
+      if (!remoteOk.current || !hydrating.current) {
+        try {
+          if (localStorage.getItem('rb_version')) {
+            const r = (k, set, migrate) => { const v = localStorage.getItem(k); if (v) set(migrate ? migrate(JSON.parse(v)) : JSON.parse(v)); };
+            r('rb_project',       setProject);
+            r('rb_phases',        setPhases);
+            r('rb_team',          setTeam);
+            r('rb_presentations', setPresentations, migratePresentations);
+            r('rb_meetings',      setMeetings,      migrateMeetings);
+            r('rb_deliverables',  setDeliverables,  migrateDeliverables);
+            r('rb_deps',          setDeps,  migrateDeps);
+            r('rb_links',         setLinks);
+            r('rb_cal_bands',     setCalBands);
+          }
+        } catch {}
+        if (!remoteOk.current) showSyncWarning('Couldn’t load the shared data, so saving is paused to protect it. Showing the copy saved in this browser — please refresh in a while.');
+        else {
+          needsMigration.current = true;
+          try { noLocalCopy.current = !localStorage.getItem('rb_project'); } catch { noLocalCopy.current = true; }
+        }
+      }
       const elapsed = Date.now() - loadStart;
       setTimeout(() => setLoading(false), Math.max(0, MIN_LOADER_MS - elapsed));
       canSave.current = true;
@@ -1162,6 +1199,9 @@ function App() {
 
   useEffect(() => {
     if (!canSave.current) return;
+    // Store empty and nothing to move from this browser: don't save anywhere (not even this browser's copy),
+    // otherwise the setup data would later be mistaken for a real saved copy
+    if (needsMigration.current && noLocalCopy.current) { if (editMode) showSyncWarning('Nothing was moved: this browser has no saved copy of this portal. Open it in Safari on the computer you usually edit from.'); return; }
     // localStorage mirror (always)
     try {
       localStorage.setItem('rb_version',       String(DATA_VERSION));
@@ -1175,21 +1215,32 @@ function App() {
       localStorage.setItem('rb_links',         JSON.stringify(links));
       localStorage.setItem('rb_cal_bands',     JSON.stringify(calBands));
     } catch {}
-    if (!JSONBIN_OK) return;
-    // Debounced PUT to avoid spamming JSONbin during rapid edits
-    const tid = setTimeout(() => {
-      fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
-        method:  'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
-        body:    JSON.stringify({
+    if (!JSONBIN_OK || !remoteOk.current) return;
+    const body = JSON.stringify({
           version: DATA_VERSION,
           project, phases, team, presentations,
           meetings, deliverables, deps, links, calBands,
-        }),
-      }).catch(err => console.warn('Ritika Barmecha portal: JSONbin save failed', err));
-    }, 600);
+        });
+    // First save into an empty store only happens from a browser where edit mode is unlocked
+    if (needsMigration.current && !editMode) return;
+    // Skip the re-render caused by loading, and anything that didn't actually change
+    if (hydrating.current) { hydrating.current = false; lastSaved.current = body; return; }
+    if (body === lastSaved.current) return;
+    // Debounced PUT to avoid spamming JSONbin during rapid edits
+    const tid = setTimeout(() => {
+      fetch(`${STORE_URL}?id=${JSONBIN_ID}`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }).then(r => {
+        if (r.ok) { lastSaved.current = body; needsMigration.current = false; hideSyncWarning(); }
+        else showSyncWarning(r.status === 503
+          ? 'Not saved — the storage service is busy. Make another change in a few minutes to retry; your changes are kept in this browser.'
+          : `Not saved (error ${r.status}). Your changes are only in this browser.`);
+      }).catch(err => { console.warn('Ritika Barmecha portal: JSONbin save failed', err); showSyncWarning('Not saved — no connection. Your changes are only in this browser.'); });
+    }, 1500);
     return () => clearTimeout(tid);
-  }, [project, phases, team, presentations, meetings, deliverables, deps, links, calBands]);
+  }, [project, phases, team, presentations, meetings, deliverables, deps, links, calBands, editMode]);
 
   /* ── DERIVED PHASE STATUS + DISPLAY DATE ───────────────────────────────
      Three signals combined; highest level wins (phases never downgraded).
